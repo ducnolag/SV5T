@@ -175,32 +175,168 @@ app.post('/api/ai/ocr', upload.single('file'), async (req, res) => {
   }
 });
 
-// 3. AI Recommendations
+// 3. AI Recommendations (vnSocial Integration)
+let vnSocialToken = null;
+async function getVnSocialToken() {
+  if (vnSocialToken) return vnSocialToken;
+  try {
+    const res = await axios.post('https://api-vnsocialplus.vnpt.vn/social-api/v1/login', {
+      username: 'vnsocial',
+      password: '******' // Configurable via .env in production
+    });
+    vnSocialToken = res.data?.object?.token;
+    return vnSocialToken;
+  } catch (err) {
+    console.error("vnSocial login error:", err.message);
+    return null;
+  }
+}
+
 app.get('/api/ai/recommendations/:studentId', async (req, res) => {
-  // Analyze missing criteria and fetch vnSocial events
-  const keywords = {
-    "Đạo đức": ["đạo đức", "khen thưởng", "chấp hành", "tốt"],
-    "Học tập": ["học tập", "gpa", "bảng điểm", "xuất sắc", "chứng nhận", "giải thưởng", "ielts", "toeic", "tiếng anh"],
-    "Thể lực": ["thể lực", "thể thao", "giải", "huy chương", "thanh niên khỏe", "sinh viên khỏe"],
-    "Tình nguyện": ["tình nguyện", "mùa hè xanh", "hiến máu", "chiến dịch", "tích cực"],
-    "Hội nhập": ["hội nhập", "kỹ năng", "quốc tế", "giao lưu", "ngoại ngữ", "toạ đàm", "hội thảo"]
-  };
-  res.json([
-    {
-      id: "evt_1",
-      title: "Chiến dịch Mùa hè xanh 2024",
-      matched_criteria: "Tình nguyện tốt",
-      source: "vnSocial Fanpage Hội Sinh viên",
-      date: "2024-07-15"
-    },
-    {
-      id: "evt_2",
-      title: "Hội thảo Nghiên cứu khoa học toàn quốc",
-      matched_criteria: "Học tập tốt",
-      source: "vnSocial Fanpage ĐHQGHN",
-      date: "2024-08-10"
+  try {
+    const missingQuery = req.query.missing;
+    const missingCriteriaList = missingQuery ? missingQuery.split(',') : ["Học tập tốt", "Đạo đức tốt", "Thể lực tốt", "Tình nguyện tốt", "Hội nhập tốt"];
+    
+    const token = await getVnSocialToken();
+    let fetchedPosts = [];
+    
+    if (token) {
+      try {
+        const projRes = await axios.get('https://api-vnsocialplus.vnpt.vn/social-api/v1/projects?type=TOPIC_POLICY', {
+          headers: { 'x-access-token': token }
+        });
+        const projects = projRes.data?.object?.data || [];
+        const projectId = projects.length > 0 ? projects[0].id : '659375db02d0a2846d952551';
+        
+        const postRes = await axios.post('https://api-vnsocialplus.vnpt.vn/social-api/v1/projects/posts', {
+          project_id: projectId,
+          source: 'baochi',
+          start_time: Date.now() - 30 * 24 * 60 * 60 * 1000,
+          end_time: Date.now(),
+          from: 0,
+          size: 20, // Fetch more to filter locally
+          reactionary: false
+        }, {
+          headers: { 'x-access-token': token }
+        });
+        
+        fetchedPosts = postRes.data?.object || [];
+      } catch (apiErr) {
+        console.error("vnSocial fetch error:", apiErr.message);
+      }
     }
-  ]);
+    
+    // Keyword matching logic for real posts
+    const KEYWORDS = {
+      "Đạo đức tốt": ["đạo đức", "khen thưởng", "chấp hành", "tuyên dương", "tấm gương", "việc tử tế"],
+      "Học tập tốt": ["học tập", "nghiên cứu", "khoa học", "gpa", "tiếng anh", "giải thưởng", "giáo dục", "học bổng", "nckh", "ielts", "toeic"],
+      "Thể lực tốt": ["thể lực", "thể thao", "giải chạy", "bóng đá", "thanh niên khỏe", "vug", "marathon", "thể chất"],
+      "Tình nguyện tốt": ["tình nguyện", "mùa hè xanh", "hiến máu", "chiến dịch", "tích cực", "xã hội", "tiếp sức", "từ thiện"],
+      "Hội nhập tốt": ["hội nhập", "kỹ năng", "quốc tế", "giao lưu", "ngoại ngữ", "toạ đàm", "asean", "hội thảo", "startup", "khởi nghiệp"]
+    };
+
+    const MOCK_EVENTS = {
+      "Đạo đức tốt": [
+        {
+          docId: "DD_01_" + Date.now(),
+          title: "Hiến máu nhân đạo tại Viện Huyết học - Truyền máu Trung ương (Nhận giấy chứng nhận)",
+          sourceName: "Viện Huyết học",
+          postLink: "https://vienhuyethoc.vn/lich-hien-mau/",
+          pictures: ["https://vienhuyethoc.vn/wp-content/uploads/2020/02/lich-hien-mau.jpg"],
+          createDate: new Date().toISOString(),
+        }
+      ],
+      "Học tập tốt": [
+        {
+          docId: "HT_01_" + Date.now(),
+          title: "Tham gia Giải thưởng Sinh viên Nghiên cứu Khoa học Euréka 2024",
+          sourceName: "Khoa Học Trẻ",
+          postLink: "https://khoahoctre.com.vn/giai-thuong-eureka/",
+          pictures: ["https://khoahoctre.com.vn/wp-content/uploads/2023/10/EUREKA-2023.jpg"],
+          createDate: new Date().toISOString(),
+        }
+      ],
+      "Tình nguyện tốt": [
+        {
+          docId: "TN_01_" + Date.now(),
+          title: "Đăng ký các hoạt động tại Cổng thông tin Tình nguyện Quốc gia",
+          sourceName: "Mạng lưới Tình nguyện",
+          postLink: "https://tinhnguyenquocgia.com/",
+          pictures: ["https://doanthanhnien.vn/Content/images/logo-dtn.png"],
+          createDate: new Date().toISOString(),
+        }
+      ],
+      "Thể lực tốt": [
+        {
+          docId: "TL_01_" + Date.now(),
+          title: "Thử thách chạy bộ trực tuyến UpRace (Có cấp chứng nhận hoàn thành)",
+          sourceName: "UpRace",
+          postLink: "https://uprace.org/",
+          pictures: ["https://uprace.org/wp-content/uploads/2023/07/Cover-Fanpage.jpg"],
+          createDate: new Date().toISOString(),
+        }
+      ],
+      "Hội nhập tốt": [
+        {
+          docId: "HN_01_" + Date.now(),
+          title: "Đăng ký Sáng kiến Thủ lĩnh trẻ Đông Nam Á (YSEALI)",
+          sourceName: "Đại sứ quán Hoa Kỳ",
+          postLink: "https://vn.usembassy.gov/vi/education-culture-vi/yseali-vi/",
+          pictures: ["https://vn.usembassy.gov/wp-content/uploads/sites/40/YSEALI-Logo.png"],
+          createDate: new Date().toISOString(),
+        }
+      ]
+    };
+
+    let recommendations = [];
+
+    // Filter logic: Recommend multiple per criteria
+    for (const criteria of missingCriteriaList) {
+      if (!criteria) continue;
+      const keywords = KEYWORDS[criteria] || [];
+      const matchedPosts = fetchedPosts.filter(p => {
+        const text = (p.title + " " + (p.description||"") + " " + (p.content||"")).toLowerCase();
+        return keywords.some(k => text.includes(k.toLowerCase()));
+      });
+
+      if (matchedPosts.length > 0) {
+        matchedPosts.slice(0, 10).forEach(matchedPost => {
+          recommendations.push({
+            id: matchedPost.docId,
+            title: matchedPost.title,
+            matched_criteria: criteria,
+            source: matchedPost.sourceName,
+            date: matchedPost.createDate?.substring(0, 10) || new Date().toISOString().substring(0, 10),
+            postLink: matchedPost.postLink,
+            pictures: matchedPost.pictures || (matchedPost.picture ? [matchedPost.picture] : [])
+          });
+          fetchedPosts = fetchedPosts.filter(p => p.docId !== matchedPost.docId);
+        });
+      }
+      
+      // Always add at least 1 evergreen real activity to ensure they have an actionable proof-gathering link
+      const mocks = MOCK_EVENTS[criteria] || MOCK_EVENTS["Học tập tốt"];
+      mocks.forEach(mock => {
+        recommendations.push({
+          id: mock.docId,
+          title: mock.title,
+          matched_criteria: criteria,
+          source: mock.sourceName,
+          date: mock.createDate.substring(0, 10),
+          postLink: mock.postLink,
+          pictures: mock.pictures
+        });
+      });
+    }
+
+    // Limit total recommendations to 20 so there are plenty for the carousel
+    recommendations = recommendations.slice(0, 20);
+    
+    res.json(recommendations);
+  } catch (err) {
+    console.error("Error in AI recommendations endpoint:", err.message);
+    res.status(500).json({ error: 'Lỗi server' });
+  }
 });
 
 app.listen(3008, () => {

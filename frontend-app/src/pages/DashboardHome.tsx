@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
-import { Clock, TrendingUp, CheckCircle, AlertCircle, Zap, ArrowRight } from 'lucide-react';
+import { Clock, TrendingUp, CheckCircle, AlertCircle, Zap, ArrowRight, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 
 const CRITERIA_NAMES = ['Học tập tốt', 'Đạo đức tốt', 'Thể lực tốt', 'Tình nguyện tốt', 'Hội nhập tốt'];
 const CRITERIA_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -12,6 +12,8 @@ interface Recommendation {
   matched_criteria: string;
   source: string;
   date: string;
+  postLink?: string;
+  pictures?: string[];
 }
 
 function CircleProgress({ value, label, color }: { value: number; label: string; color: string }) {
@@ -75,11 +77,19 @@ function CountdownBanner({ deadline }: { deadline: Date | null }) {
 
 export default function DashboardHome() {
   const { user, isRole } = useAuth();
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [myApp, setMyApp] = useState<any>(null);
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0 });
   const [criteriaProgress, setCriteriaProgress] = useState([0, 0, 0, 0, 0]);
   const deadline = new Date('2026-10-15T23:59:59');
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const scrollAmount = direction === 'left' ? -350 : 350;
+      scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     if (isRole('SINH_VIEN')) {
@@ -99,12 +109,17 @@ export default function DashboardHome() {
                   return 0;
                 });
                 setCriteriaProgress(progress);
+                const missing = CRITERIA_NAMES.filter((_, i) => progress[i] === 0);
+                if (missing.length > 0) {
+                  api.get(`/ai/recommendations/${user?.id || 'default'}?missing=${encodeURIComponent(missing.join(','))}`)
+                     .then(r => setRecs(r.data))
+                     .catch(() => {});
+                }
               }
             });
           });
         }
       }).catch(() => {});
-      api.get(`/ai/recommendations/${user?.id || 'default'}`).then(r => setRecs(r.data)).catch(() => {});
     }
     if (isRole('CB_TRUONG', 'CB_TINH', 'CB_TW', 'ADMIN')) {
       api.get('/applications/pending').then(r => {
@@ -187,23 +202,108 @@ export default function DashboardHome() {
 
         {/* AI Recs */}
         {recs.length > 0 && (
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-            <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4">
-              <Zap size={18} className="text-amber-500" /> Đề xuất Hoạt động (AI)
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              {recs.map(r => (
-                <div key={r.id} className="p-4 rounded-lg border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-colors cursor-pointer group">
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="font-semibold text-slate-800 line-clamp-1">{r.title}</p>
-                    <ArrowRight size={16} className="text-slate-300 group-hover:text-blue-500" />
+          <div className="bg-gradient-to-br from-white to-slate-50/50 rounded-2xl border border-slate-200 shadow-sm p-6 overflow-hidden relative">
+            {/* Background decoration */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-3xl opacity-50 -mr-20 -mt-20 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-40 h-40 bg-blue-50 rounded-full blur-2xl opacity-60 -ml-10 -mb-10 pointer-events-none"></div>
+
+            <div className="relative z-10 flex justify-between items-end mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                  <Zap size={22} className="text-amber-500 drop-shadow-sm" fill="currentColor" /> Đề xuất Hoạt động (AI)
+                </h3>
+                <p className="text-sm text-slate-500 mt-1">Các hoạt động phù hợp giúp bạn hoàn thiện tiêu chí còn thiếu</p>
+              </div>
+              <div className="hidden sm:flex items-center gap-3">
+                <button onClick={() => scroll('left')} className="p-2 rounded-full bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 hover:shadow-md transition-all shadow-sm">
+                  <ChevronLeft size={20} />
+                </button>
+                <button onClick={() => scroll('right')} className="p-2 rounded-full bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 hover:shadow-md transition-all shadow-sm">
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            </div>
+            
+            {/* Mobile swipe instruction */}
+            <div className="sm:hidden mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-medium text-indigo-500 bg-indigo-50 px-3 py-1.5 rounded-full w-fit">
+                <span>Vuốt ngang để xem</span>
+                <ArrowRight size={14} />
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => scroll('left')} className="p-1.5 rounded-full bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 transition-all shadow-sm"><ChevronLeft size={16} /></button>
+                <button onClick={() => scroll('right')} className="p-1.5 rounded-full bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 transition-all shadow-sm"><ChevronRight size={16} /></button>
+              </div>
+            </div>
+
+            <div ref={scrollRef} className="relative z-10 flex overflow-x-auto snap-x snap-mandatory gap-5 pb-6 pt-2 scrollbar-hide -mx-6 px-6" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {/* Add custom CSS to hide scrollbar while keeping functionality */}
+              <style dangerouslySetInnerHTML={{__html: `
+                .scrollbar-hide::-webkit-scrollbar {
+                    display: none;
+                }
+              `}} />
+              {recs.map(r => {
+                const getFallback = (criteria: string | undefined) => {
+                  if (!criteria) return 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=80';
+                  if (criteria.includes('Học')) return 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&w=800&q=80';
+                  if (criteria.includes('Đạo')) return 'https://images.unsplash.com/photo-1615461066841-6116e61058f4?auto=format&fit=crop&w=800&q=80';
+                  if (criteria.includes('Thể')) return 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=800&q=80';
+                  if (criteria.includes('Tình')) return 'https://images.unsplash.com/photo-1593113589914-07599014dd8f?auto=format&fit=crop&w=800&q=80';
+                  if (criteria.includes('Hội')) return 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=800&q=80';
+                  return 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=80';
+                };
+                
+                const imgSrc = (r.pictures && r.pictures.length > 0) ? r.pictures[0] : getFallback(r.matched_criteria);
+                
+                return (
+                <a key={r.id} href={r.postLink || '#'} target="_blank" rel="noopener noreferrer" 
+                  className="snap-center w-[300px] md:w-[350px] flex-shrink-0 flex flex-col rounded-3xl bg-white border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_30px_-8px_rgba(79,70,229,0.15)] hover:-translate-y-1 hover:border-indigo-100 transition-all duration-300 cursor-pointer group overflow-hidden relative" style={{ height: 'auto' }}>
+                  
+                  <div className="w-full h-[200px] flex-shrink-0 overflow-hidden relative bg-slate-50">
+                    <img 
+                      src={imgSrc} 
+                      alt={r.title} 
+                      referrerPolicy="no-referrer"
+                      onError={(e) => { e.currentTarget.src = getFallback(r.matched_criteria) }}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/10 to-transparent opacity-90"></div>
+                    
+                    {/* Sleek Criteria Tag */}
+                    <div className="absolute top-4 left-4 z-30">
+                      <span className="flex items-center gap-1.5 bg-white/95 backdrop-blur text-slate-800 px-3 py-1 rounded-lg text-xs font-bold tracking-wide shadow-sm">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                        {r.matched_criteria}
+                      </span>
+                    </div>
+
+                    <div className="absolute bottom-4 left-4 z-30">
+                      <span className="text-white/90 text-[11px] font-semibold bg-black/30 backdrop-blur-md px-2.5 py-1 rounded-md">
+                        {r.date}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-medium">{r.matched_criteria}</span>
-                    <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{r.source}</span>
+                  
+                  <div className="p-6 flex flex-col flex-grow bg-white">
+                    <h4 className="font-bold text-slate-800 line-clamp-3 leading-snug group-hover:text-indigo-600 transition-colors mb-4 text-[17px]">{r.title}</h4>
+                    
+                    <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2 max-w-[80%]">
+                        <div className="w-6 h-6 rounded-md bg-indigo-50 flex items-center justify-center flex-shrink-0 text-indigo-600">
+                          <Zap size={12} fill="currentColor" />
+                        </div>
+                        <p className="text-[13px] text-slate-600 font-medium truncate">
+                          {r.source}
+                        </p>
+                      </div>
+                      <div className="text-slate-300 group-hover:text-indigo-600 transition-colors">
+                        <ExternalLink size={18} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                </a>
+              )})}
             </div>
           </div>
         )}

@@ -44,8 +44,8 @@ export default function DashboardLayout() {
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-900">
-      {/* Sleek Light Sidebar */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shadow-sm">
+      {/* Sleek Light Sidebar (Desktop) */}
+      <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col shadow-sm">
         
         {/* Logo */}
         <div className="p-6 border-b border-slate-100">
@@ -106,17 +106,22 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden relative">
+      <div className="flex-1 flex flex-col overflow-hidden relative w-full pb-16 md:pb-0">
         {/* Topbar */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shadow-sm z-10">
-          <div>
-            <h2 className="text-slate-800 font-bold text-lg">Hệ thống Quản lý Sinh viên 5 Tốt</h2>
-            <p className="text-xs text-slate-500 font-medium">
-              {isStaff ? 'Chế độ cán bộ' : 'Không gian sinh viên'}
-            </p>
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shadow-sm z-10 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="md:hidden w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white text-sm shadow-sm">
+              5T
+            </div>
+            <div>
+              <h2 className="text-slate-800 font-bold text-base md:text-lg truncate max-w-[200px] md:max-w-none">Hệ thống Quản lý Sinh viên 5 Tốt</h2>
+              <p className="text-[10px] md:text-xs text-slate-500 font-medium">
+                {isStaff ? 'Chế độ cán bộ' : 'Không gian sinh viên'}
+              </p>
+            </div>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
             <div className="relative">
               <button onClick={() => setShowNotif(!showNotif)}
                 className="relative p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors">
@@ -127,7 +132,7 @@ export default function DashboardLayout() {
               </button>
               
               {showNotif && notification && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-slate-200 p-4 z-50">
+                <div className="absolute right-0 mt-2 w-[280px] md:w-80 bg-white rounded-lg shadow-xl border border-slate-200 p-4 z-50">
                   <div className="flex justify-between items-start mb-3">
                     <h4 className="font-semibold text-slate-800 text-sm">Thông báo mới</h4>
                     <button onClick={() => { clearNotification(); setShowNotif(false); }}
@@ -139,22 +144,39 @@ export default function DashboardLayout() {
                 </div>
               )}
             </div>
+            <button onClick={() => { logout(); navigate('/login'); }} className="md:hidden p-2 text-red-500 hover:bg-red-50 rounded-lg">
+              <LogOut size={20} />
+            </button>
           </div>
         </header>
 
         {/* Content Box */}
-        <main className="flex-1 overflow-auto p-8">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8">
           <Outlet context={{ refreshTrigger }} />
         </main>
       </div>
 
+      {/* Mobile Bottom Nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around items-center h-16 z-50 px-2 shadow-[0_-5px_10px_rgba(0,0,0,0.05)]">
+        {navItems.map(item => {
+          const Icon = item.icon;
+          const isActive = location.pathname === item.path;
+          return (
+            <Link key={item.path} to={item.path} className={`flex flex-col items-center justify-center w-full h-full ${isActive ? 'text-blue-600' : 'text-slate-500'}`}>
+              <Icon size={20} />
+              <span className="text-[10px] mt-1 truncate max-w-[60px] text-center font-medium">{item.name}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
       {/* Corporate AI Chatbot */}
-      <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end gap-3">
+      <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-[100] flex flex-col items-end gap-3">
         {showChatbot && <ChatbotWidget onClose={() => setShowChatbot(false)} />}
         
         <button onClick={() => setShowChatbot(!showChatbot)}
-          className="w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center text-white hover:bg-blue-700 transition-colors">
-          {showChatbot ? <X size={24} /> : <MessageCircle size={24} />}
+          className="w-12 h-12 md:w-14 md:h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center text-white hover:bg-blue-700 transition-colors">
+          {showChatbot ? <X size={20} className="md:w-6 md:h-6" /> : <MessageCircle size={20} className="md:w-6 md:h-6" />}
         </button>
       </div>
     </div>

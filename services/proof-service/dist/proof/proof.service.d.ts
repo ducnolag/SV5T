@@ -13,14 +13,14 @@ export declare class ProofService {
             so_luong_yeu_cau: number;
         } | null;
     } & {
+        trang_thai: string;
+        ly_do_loai: string | null;
         id: string;
         loai: string;
         ten_minh_chung: string | null;
         file_url: string;
-        trang_thai: string;
         ai_xac_thuc_muc_do: number | null;
         nguoi_duyet_id: string | null;
-        ly_do_loai: string | null;
         created_at: Date;
         nguoi_dung_id: string;
         tieu_chi_id: string | null;
@@ -35,14 +35,14 @@ export declare class ProofService {
             so_luong_yeu_cau: number;
         } | null;
     } & {
+        trang_thai: string;
+        ly_do_loai: string | null;
         id: string;
         loai: string;
         ten_minh_chung: string | null;
         file_url: string;
-        trang_thai: string;
         ai_xac_thuc_muc_do: number | null;
         nguoi_duyet_id: string | null;
-        ly_do_loai: string | null;
         created_at: Date;
         nguoi_dung_id: string;
         tieu_chi_id: string | null;
@@ -62,40 +62,40 @@ export declare class ProofService {
             so_luong_yeu_cau: number;
         } | null;
     } & {
+        trang_thai: string;
+        ly_do_loai: string | null;
         id: string;
         loai: string;
         ten_minh_chung: string | null;
         file_url: string;
-        trang_thai: string;
         ai_xac_thuc_muc_do: number | null;
         nguoi_duyet_id: string | null;
-        ly_do_loai: string | null;
         created_at: Date;
         nguoi_dung_id: string;
         tieu_chi_id: string | null;
     })[]>;
     reviewProof(id: string, dto: ReviewProofDto, user: any): Promise<{
+        trang_thai: string;
+        ly_do_loai: string | null;
         id: string;
         loai: string;
         ten_minh_chung: string | null;
         file_url: string;
-        trang_thai: string;
         ai_xac_thuc_muc_do: number | null;
         nguoi_duyet_id: string | null;
-        ly_do_loai: string | null;
         created_at: Date;
         nguoi_dung_id: string;
         tieu_chi_id: string | null;
     }>;
     deleteProof(id: string, userId: string): Promise<{
+        trang_thai: string;
+        ly_do_loai: string | null;
         id: string;
         loai: string;
         ten_minh_chung: string | null;
         file_url: string;
-        trang_thai: string;
         ai_xac_thuc_muc_do: number | null;
         nguoi_duyet_id: string | null;
-        ly_do_loai: string | null;
         created_at: Date;
         nguoi_dung_id: string;
         tieu_chi_id: string | null;
