@@ -1,0 +1,45 @@
+import { Controller, Post, Put, Get, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { ApplicationService } from './application.service';
+import { CreateApplicationDto, ReviewApplicationDto } from './dto';
+import { AuthGuard } from '@nestjs/passport';
+
+@Controller('applications')
+@UseGuards(AuthGuard('jwt'))
+export class ApplicationController {
+  constructor(private readonly appService: ApplicationService) {}
+
+  @Get('my')
+  getMyApplications(@Request() req: any) {
+    return this.appService.getMyApplications(req.user.id);
+  }
+
+  @Get('pending')
+  getPendingApplications(@Request() req: any) {
+    return this.appService.getPendingApplications(req.user);
+  }
+
+  @Get('quy-ches')
+  getQuyChes() {
+    return this.appService.getQuyChes();
+  }
+
+  @Post()
+  create(@Body() dto: CreateApplicationDto, @Request() req: any) {
+    return this.appService.createDraft(req.user.id, dto);
+  }
+
+  @Put(':id/submit')
+  submit(@Param('id') id: string, @Request() req: any) {
+    return this.appService.submitApplication(id, req.user.id);
+  }
+
+  @Put(':id/review')
+  review(@Param('id') id: string, @Body() dto: ReviewApplicationDto, @Request() req: any) {
+    return this.appService.reviewApplication(id, dto, req.user);
+  }
+
+  @Post('batch-escalate')
+  escalateBatch(@Body('appIds') appIds: string[], @Request() req: any) {
+    return this.appService.escalateBatch(appIds, req.user);
+  }
+}

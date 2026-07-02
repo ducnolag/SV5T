@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "@Duclag123"
+      POSTGRES_DB: sv5t_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  mongodb:
+    image: mongo:6-jammy
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodata:/data/db
+
+  auth:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/sv5t_auth
+      - DATABASE_URL=postgresql://postgres:%40Duclag123@postgres:5432/sv5t_db?schema=public
+      - JWT_SECRET=sv5t-super-secret-key
+    depends_on:
+      - postgres
+      - mongodb
+
+  unit:
+    build:
+      context: .
+      dockerfile: services/unit-service/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://postgres:%40Duclag123@postgres:5432/sv5t_db?schema=public
+      - JWT_SECRET=sv5t-super-secret-key
+    depends_on:
+      - postgres
+
+  activity:
+    build:
+      context: .
+      dockerfile: services/activity-service/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://postgres:%40Duclag123@postgres:5432/sv5t_db?schema=public
+      - JWT_SECRET=sv5t-super-secret-key
+    depends_on:
+      - postgres
+
+  attendance:
+    build:
+      context: .
+      dockerfile: services/attendance-service/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://postgres:%40Duclag123@postgres:5432/sv5t_db?schema=public
+      - JWT_SECRET=sv5t-super-secret-key
+    depends_on:
+      - postgres
+
+  proof:
+    build:
+      context: .
+      dockerfile: services/proof-service/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://postgres:%40Duclag123@postgres:5432/sv5t_db?schema=public
+      - JWT_SECRET=sv5t-super-secret-key
+    depends_on:
+      - postgres
+
+  application:
+    build:
+      context: .
+      dockerfile: services/application-service/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://postgres:%40Duclag123@postgres:5432/sv5t_db?schema=public
+      - JWT_SECRET=sv5t-super-secret-key
+      - NOTIFICATION_URL=http://notification:3007
+    depends_on:
+      - postgres
+
+  notification:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+    environment:
+      - JWT_SECRET=sv5t-super-secret-key
+    depends_on:
+      - postgres
+
+  gateway-frontend:
+    build:
+      context: .
+      dockerfile: gateway-frontend/Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth
+      - unit
+      - activity
+      - attendance
+      - proof
+      - application
+      - notification
+
+volumes:
+  pgdata:
+  mongodata:
