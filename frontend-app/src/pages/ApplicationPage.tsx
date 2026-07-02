@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { CheckCircle, XCircle, ArrowLeft, UploadCloud, FileText, Search, Filter, Sparkles, User, Calendar, ShieldCheck, Target, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowLeft, UploadCloud, FileText, Search, Filter, Sparkles, User, Calendar, ShieldCheck, Target, AlertTriangle, X, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 
 const FLOW_STEPS = [
@@ -38,6 +38,18 @@ export default function ApplicationPage() {
   const [view, setView] = useState<'my' | 'pending'>('my');
   const [searchQuery, setSearchQuery] = useState('');
   const [userProofs, setUserProofs] = useState<any[]>([]);
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
+
+  const openPreview = (fileUrlString: string) => {
+    try {
+      const urls = JSON.parse(fileUrlString);
+      setPreviewImages(Array.isArray(urls) ? urls : [fileUrlString]);
+    } catch {
+      setPreviewImages([fileUrlString]);
+    }
+    setCurrentPreviewIndex(0);
+  };
 
   const isStaff = isRole('CB_TRUONG', 'CB_TINH', 'CB_TW', 'ADMIN');
   const isSV = isRole('SINH_VIEN');
@@ -154,7 +166,7 @@ export default function ApplicationPage() {
     appDetail.quy_che?.tieu_chis?.forEach((tc: any) => {
       const reqCount = tc.so_luong_yeu_cau || 1;
       const validCount = isDraft 
-        ? userProofs.filter(p => p.tieu_chi_id === tc.id && (p.trang_thai === 'DA_XAC_THUC' || p.trang_thai === 'DA_DUYET' || (p.ai_xac_thuc_muc_do && p.ai_xac_thuc_muc_do >= 80))).length
+        ? userProofs.filter(p => p.tieu_chi_id === tc.id).length
         : (appDetail.minh_chungs || []).filter((p: any) => p.tieu_chi_id === tc.id).length;
       if (validCount < reqCount) missingCount += (reqCount - validCount);
     });
@@ -257,7 +269,7 @@ export default function ApplicationPage() {
             {(appDetail.quy_che?.tieu_chis || []).map((tc: any) => {
               const reqCount = tc.so_luong_yeu_cau || 1;
               const tcProofs = isDraft
-                ? userProofs.filter(p => p.tieu_chi_id === tc.id && (p.trang_thai === 'DA_XAC_THUC' || p.trang_thai === 'DA_DUYET' || (p.ai_xac_thuc_muc_do && p.ai_xac_thuc_muc_do >= 80)))
+                ? userProofs.filter(p => p.tieu_chi_id === tc.id)
                 : (appDetail.minh_chungs || []).filter((p: any) => p.tieu_chi_id === tc.id);
               
               const isCompleted = tcProofs.length >= reqCount;
@@ -292,14 +304,26 @@ export default function ApplicationPage() {
                     
                     <div className="w-full md:w-64 flex-shrink-0">
                       {tcProofs.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-2 h-full">
-                          {tcProofs.slice(0, 2).map((proof: any) => (
-                            <div key={proof.id} className="bg-emerald-50 border border-emerald-100 rounded-xl p-1 relative group overflow-hidden h-32 flex flex-col justify-center">
+                        <div className="flex overflow-x-auto gap-3 h-32 pb-2 scrollbar-thin">
+                          {tcProofs.map((proof: any) => (
+                            <div key={proof.id} className="w-32 flex-shrink-0 bg-emerald-50 border border-emerald-100 rounded-xl p-1 relative group overflow-hidden h-full flex flex-col justify-center cursor-pointer" onClick={() => openPreview(proof.file_url)}>
                               <div className="w-full h-full rounded-lg overflow-hidden relative bg-white border border-emerald-100/50">
-                                <img src={proof.file_url?.startsWith('http') ? proof.file_url : `http://localhost:3000${proof.file_url?.startsWith('/') ? '' : '/'}${proof.file_url}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Minh chứng" />
-                                <div className="absolute inset-0 bg-emerald-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-300 backdrop-blur-sm">
-                                  <a href={proof.file_url?.startsWith('http') ? proof.file_url : `http://localhost:3000${proof.file_url?.startsWith('/') ? '' : '/'}${proof.file_url}`} target="_blank" className="px-3 py-1.5 bg-white text-emerald-900 font-bold text-xs rounded-lg shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">Xem</a>
-                                </div>
+                                {(() => {
+                                  let urls: string[] = [];
+                                  try { urls = JSON.parse(proof.file_url); } catch { urls = [proof.file_url]; }
+                                  const firstUrl = urls[0];
+                                  const src = firstUrl?.startsWith('http') ? firstUrl : `http://localhost:3000${firstUrl?.startsWith('/') ? '' : '/'}${firstUrl}`;
+                                  return (
+                                    <>
+                                      <img src={src} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Minh chứng" />
+                                      {urls.length > 1 && (
+                                        <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm">
+                                          +{urls.length - 1}
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
                           ))}
@@ -325,6 +349,44 @@ export default function ApplicationPage() {
             })}
           </div>
         </div>
+
+        {/* Preview Modal for Detail View */}
+        {previewImages.length > 0 && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl overflow-hidden w-full max-w-4xl max-h-full flex flex-col shadow-2xl relative">
+              <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-white">
+                <h3 className="font-bold text-slate-800">
+                  Xem minh chứng {previewImages.length > 1 && `(${currentPreviewIndex + 1}/${previewImages.length})`}
+                </h3>
+                <button onClick={() => setPreviewImages([])} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="flex-1 bg-slate-50 overflow-auto p-4 flex items-center justify-center relative min-h-[400px]">
+                {previewImages.length > 1 && (
+                  <>
+                    <button 
+                      onClick={() => setCurrentPreviewIndex(prev => prev > 0 ? prev - 1 : previewImages.length - 1)}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/80 hover:bg-white text-slate-800 rounded-full shadow-lg backdrop-blur-sm transition-all hover:scale-110 z-10">
+                      <ChevronLeft size={24} />
+                    </button>
+                    <button 
+                      onClick={() => setCurrentPreviewIndex(prev => prev < previewImages.length - 1 ? prev + 1 : 0)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/80 hover:bg-white text-slate-800 rounded-full shadow-lg backdrop-blur-sm transition-all hover:scale-110 z-10">
+                      <ChevronRightIcon size={24} />
+                    </button>
+                  </>
+                )}
+                {previewImages[currentPreviewIndex].match(/\.(pdf)$/i) ? (
+                  <iframe src={previewImages[currentPreviewIndex].startsWith('http') ? previewImages[currentPreviewIndex] : `http://localhost:3000${previewImages[currentPreviewIndex].startsWith('/') ? '' : '/'}${previewImages[currentPreviewIndex]}`} className="w-full h-[70vh] rounded-xl shadow-sm" />
+                ) : (
+                  <img src={previewImages[currentPreviewIndex].startsWith('http') ? previewImages[currentPreviewIndex] : `http://localhost:3000${previewImages[currentPreviewIndex].startsWith('/') ? '' : '/'}${previewImages[currentPreviewIndex]}`} alt="Preview" className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-sm" />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     );
   }

@@ -33,7 +33,7 @@ export class AuthService {
       throw new UnauthorizedException('Tài khoản đã bị khóa');
     }
 
-    const payload = { sub: user.id, email: user.email, role: user.vai_tro, don_vi_id: user.don_vi_id, ho_ten: user.ho_ten };
+    const payload = { sub: user.id, email: user.email, role: user.vai_tro, don_vi_id: user.don_vi_id, ho_ten: user.ho_ten, msv: user.msv };
     const access_token = this.jwtService.sign(payload);
 
     await this.auditService.logAction(user.id, 'LOGIN', 'USER', user.id);

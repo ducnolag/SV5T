@@ -87,17 +87,20 @@ export default function DashboardHome() {
         if (r.data[0]) {
           api.get(`/applications/${r.data[0].id}`).then(res => {
             setMyApp(res.data);
-            if (res.data.minh_chungs && res.data.quy_che?.tieu_chis) {
-              const progress = CRITERIA_NAMES.map(name => {
-                const tc = res.data.quy_che.tieu_chis.find((t: any) => t.ten_tieu_chi.includes(name.split(' ')[0]));
-                if (tc) {
-                  const proof = res.data.minh_chungs.find((p: any) => p.tieu_chi_id === tc.id);
-                  return proof ? (proof.ai_xac_thuc_muc_do ?? 100) : 0;
-                }
-                return 0;
-              });
-              setCriteriaProgress(progress);
-            }
+            api.get('/proofs/me').then(proofRes => {
+              const userProofs = proofRes.data || [];
+              if (res.data.quy_che?.tieu_chis) {
+                const progress = CRITERIA_NAMES.map(name => {
+                  const tc = res.data.quy_che.tieu_chis.find((t: any) => t.ten_tieu_chi.includes(name.split(' ')[0]));
+                  if (tc) {
+                    const hasProof = userProofs.some((p: any) => p.tieu_chi_id === tc.id);
+                    return hasProof ? 100 : 0;
+                  }
+                  return 0;
+                });
+                setCriteriaProgress(progress);
+              }
+            });
           });
         }
       }).catch(() => {});

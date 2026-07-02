@@ -23,13 +23,14 @@ let ProofController = class ProofController {
     constructor(proofService) {
         this.proofService = proofService;
     }
-    upload(file, tieuChiId, hoSoId, ocrValid, req) {
-        if (!file) {
+    upload(files, tieuChiId, hoSoId, ocrValid, tenMinhChung, req) {
+        if (!files || files.length === 0) {
             throw new common_1.BadRequestException('Vui lòng chọn file minh chứng');
         }
         const tieuChiIdOrNull = tieuChiId && tieuChiId.length > 0 ? tieuChiId : null;
         const hoSoIdOrUndefined = hoSoId && hoSoId.length > 0 ? hoSoId : undefined;
-        return this.proofService.uploadProof(req.user.id, tieuChiIdOrNull, file, hoSoIdOrUndefined, ocrValid);
+        const tenMinhChungOrNull = tenMinhChung && tenMinhChung.length > 0 ? tenMinhChung : null;
+        return this.proofService.uploadProof(req.user.id, tieuChiIdOrNull, files, hoSoIdOrUndefined, ocrValid, tenMinhChungOrNull);
     }
     getMyProofs(req) {
         return this.proofService.getMyProofs(req.user.id);
@@ -44,14 +45,15 @@ let ProofController = class ProofController {
 exports.ProofController = ProofController;
 __decorate([
     (0, common_1.Post)('upload'),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
-    __param(0, (0, common_1.UploadedFile)()),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('files')),
+    __param(0, (0, common_1.UploadedFiles)()),
     __param(1, (0, common_1.Body)('tieu_chi_id')),
     __param(2, (0, common_1.Body)('ho_so_id')),
     __param(3, (0, common_1.Body)('ocr_valid')),
-    __param(4, (0, common_1.Request)()),
+    __param(4, (0, common_1.Body)('ten_minh_chung')),
+    __param(5, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String, Object]),
+    __metadata("design:paramtypes", [Array, String, String, String, String, Object]),
     __metadata("design:returntype", void 0)
 ], ProofController.prototype, "upload", null);
 __decorate([

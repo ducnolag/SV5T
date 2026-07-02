@@ -1,5 +1,5 @@
-import { Controller, Post, Get, Put, Delete, Body, Param, UseInterceptors, UploadedFile, UseGuards, Request, BadRequestException } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { Controller, Post, Get, Put, Delete, Body, Param, UseInterceptors, UploadedFiles, UseGuards, Request, BadRequestException } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { ProofService } from './proof.service';
 import { ReviewProofDto } from './dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -10,20 +10,22 @@ export class ProofController {
   constructor(private readonly proofService: ProofService) {}
 
   @Post('upload')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FilesInterceptor('files'))
   upload(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: Array<Express.Multer.File>,
     @Body('tieu_chi_id') tieuChiId: string,
     @Body('ho_so_id') hoSoId: string,
     @Body('ocr_valid') ocrValid: string,
+    @Body('ten_minh_chung') tenMinhChung: string,
     @Request() req: any
   ) {
-    if (!file) {
+    if (!files || files.length === 0) {
       throw new BadRequestException('Vui lòng chọn file minh chứng');
     }
     const tieuChiIdOrNull = tieuChiId && tieuChiId.length > 0 ? tieuChiId : null;
     const hoSoIdOrUndefined = hoSoId && hoSoId.length > 0 ? hoSoId : undefined;
-    return this.proofService.uploadProof(req.user.id, tieuChiIdOrNull, file, hoSoIdOrUndefined, ocrValid);
+    const tenMinhChungOrNull = tenMinhChung && tenMinhChung.length > 0 ? tenMinhChung : null;
+    return this.proofService.uploadProof(req.user.id, tieuChiIdOrNull, files, hoSoIdOrUndefined, ocrValid, tenMinhChungOrNull);
   }
 
   @Get('me')

@@ -29,6 +29,7 @@ export declare class ApplicationService {
             created_at: Date;
             tieu_chi_id: string | null;
             loai: string;
+            ten_minh_chung: string | null;
             file_url: string;
             ai_xac_thuc_muc_do: number | null;
             nguoi_duyet_id: string | null;
@@ -81,6 +82,7 @@ export declare class ApplicationService {
             created_at: Date;
             tieu_chi_id: string | null;
             loai: string;
+            ten_minh_chung: string | null;
             file_url: string;
             ai_xac_thuc_muc_do: number | null;
             nguoi_duyet_id: string | null;
@@ -130,6 +132,7 @@ export declare class ApplicationService {
             created_at: Date;
             tieu_chi_id: string | null;
             loai: string;
+            ten_minh_chung: string | null;
             file_url: string;
             ai_xac_thuc_muc_do: number | null;
             nguoi_duyet_id: string | null;
@@ -199,6 +202,7 @@ export declare class ApplicationService {
             created_at: Date;
             tieu_chi_id: string | null;
             loai: string;
+            ten_minh_chung: string | null;
             file_url: string;
             ai_xac_thuc_muc_do: number | null;
             nguoi_duyet_id: string | null;

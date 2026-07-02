@@ -50,7 +50,7 @@ app.post('/api/ai/chat', async (req, res) => {
 
 // 2. OCR SmartReader
 app.post('/api/ai/ocr', upload.single('file'), async (req, res) => {
-  const fullName = req.body.fullName;
+  const { fullName, msv } = req.body;
   const file = req.file;
 
   if (!file) {
@@ -74,9 +74,12 @@ app.post('/api/ai/ocr', upload.single('file'), async (req, res) => {
     const removeAccents = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
     const unaccentedText = removeAccents(lowerText);
     const unaccentedFullName = removeAccents(fullName ? fullName.toLowerCase() : "");
+    const lowerMsv = msv ? msv.toLowerCase() : "";
     
     let isNameMatch = true;
-    if (fullName) {
+    if (lowerMsv && lowerText.includes(lowerMsv)) {
+       isNameMatch = true;
+    } else if (fullName) {
       if (unaccentedText.includes(unaccentedFullName) || lowerText.includes((fullName).toLowerCase())) {
         isNameMatch = true;
       } else {

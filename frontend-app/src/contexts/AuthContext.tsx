@@ -35,7 +35,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: decoded.email,
           role: decoded.role || decoded.vai_tro,
           don_vi_id: decoded.don_vi_id,
-          ho_ten: decoded.ho_ten
+          ho_ten: decoded.ho_ten,
+          msv: decoded.msv
         };
         setUser(userData);
       } catch {
