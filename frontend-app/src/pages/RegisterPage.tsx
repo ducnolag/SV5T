@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { ChevronRight, CheckCircle2, User, Mail, Lock, Building, UploadCloud, Camera } from 'lucide-react';
+import { ChevronRight, CheckCircle2, User, Mail, Lock, Building, UploadCloud, Camera, Phone } from 'lucide-react';
 import Select from 'react-select';
 
 interface DonVi {
@@ -14,7 +14,7 @@ interface DonVi {
 export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({ 
-    email: '', mat_khau: '', ho_ten: '', msv: '', cccd: '', don_vi_id: '', vai_tro: 'SINH_VIEN' 
+    email: '', mat_khau: '', ho_ten: '', msv: '', cccd: '', don_vi_id: '', vai_tro: 'SINH_VIEN', so_dien_thoai: '' 
   });
   
   const [files, setFiles] = useState<{
@@ -227,11 +227,22 @@ export default function RegisterPage() {
                 </div>
 
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-slate-700">Mã Sinh Viên</label>
+                <div className="space-y-1.5 sm:col-span-1">
+                  <label className="text-sm font-bold text-slate-700">Mã sinh viên</label>
                   <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-slate-900"><CheckCircle2 size={18} /></div>
-                    <input type="text" required placeholder="Nhập mã sinh viên" value={formData.msv} onChange={e => setFormData({ ...formData, msv: e.target.value })}
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-slate-900"><User size={18} /></div>
+                    <input type="text" required placeholder="VD: 27A4040001" value={formData.msv} onChange={e => setFormData({ ...formData, msv: e.target.value })}
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 text-slate-900 rounded-xl focus:outline-none focus:border-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/10 transition-all font-medium uppercase" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-1">
+                  <label className="text-sm font-bold text-slate-700">Số điện thoại</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-slate-900">
+                      <Phone size={18} />
+                    </div>
+                    <input type="tel" required placeholder="0987654321" value={formData.so_dien_thoai || ''} onChange={e => setFormData({ ...formData, so_dien_thoai: e.target.value })}
                       className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 text-slate-900 rounded-xl focus:outline-none focus:border-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/10 transition-all font-medium" />
                   </div>
                 </div>

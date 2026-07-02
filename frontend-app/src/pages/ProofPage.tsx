@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { Upload, CheckCircle, XCircle, Clock, AlertCircle, FileText, Eye, X } from 'lucide-react';
+import { UploadCloud, CheckCircle, XCircle, FileText, X, Sparkles, ChevronRight, ShieldAlert, Building2 } from 'lucide-react';
 
 interface Proof {
   id: string;
@@ -14,22 +14,16 @@ interface Proof {
   tieu_chi?: { ten_tieu_chi: string };
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  DANG_XL: { label: 'Đang xử lý OCR', color: 'bg-blue-100 text-blue-700', icon: <Clock size={13} /> },
-  DA_XAC_THUC: { label: 'Đã xác thực sơ bộ', color: 'bg-indigo-100 text-indigo-700', icon: <CheckCircle size={13} /> },
-  CAN_KIEM_TRA: { label: 'Cần kiểm tra', color: 'bg-amber-100 text-amber-700', icon: <AlertCircle size={13} /> },
-  DA_DUYET: { label: 'Đã duyệt', color: 'bg-green-100 text-green-700', icon: <CheckCircle size={13} /> },
-  BI_LOAI: { label: 'Bị loại', color: 'bg-red-100 text-red-700', icon: <XCircle size={13} /> },
-};
-
 interface OcrResult {
-  extractedData: { ho_ten: string; loai_chung_chi: string; ngay_cap: string };
+  extractedData: { ho_ten: string; loai_chung_chi: string; ngay_cap: string; don_vi_cap: string };
   confidenceScore: number;
   suggestedCriteria: string;
+  isValid: boolean;
+  message: string;
 }
 
 export default function ProofPage() {
-  const { isRole } = useAuth();
+  const { user } = useAuth();
   const [proofs, setProofs] = useState<Proof[]>([]);
   const [tieuChis, setTieuChis] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,12 +31,9 @@ export default function ProofPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedTieuChi, setSelectedTieuChi] = useState('');
   const [ocrResult, setOcrResult] = useState<OcrResult | null>(null);
-  const [reviewModal, setReviewModal] = useState<{ proof: Proof } | null>(null);
-  const [lyDo, setLyDo] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  const canApprove = isRole('CB_TRUONG', 'CB_TINH', 'ADMIN');
 
   const fetchProofs = async () => {
     setLoading(true);
@@ -68,16 +59,23 @@ export default function ProofPage() {
     if (!file) return;
     setSelectedFile(file);
     setOcrResult(null);
-    // Call OCR preview
+    setOcrLoading(true);
+    
     try {
-      const res = await api.post('/ai/ocr', { imageUrl: file.name });
+      const ocrData = new FormData();
+      ocrData.append('file', file);
+      ocrData.append('fullName', user?.ho_ten || '');
+      const res = await api.post('/ai/ocr', ocrData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       setOcrResult(res.data);
       if (res.data.suggestedCriteria && tieuChis.length > 0) {
-        const matched = tieuChis.find(t => t.ten_tieu_chi.includes(res.data.suggestedCriteria.split(' ')[0]));
+        const matched = tieuChis.find(t => t.ten_tieu_chi.trim() === res.data.suggestedCriteria.trim());
         if (matched) setSelectedTieuChi(matched.id);
       }
     } catch {
-      // OCR failed silently
+    } finally {
+      setOcrLoading(false);
     }
   };
 
@@ -87,7 +85,9 @@ export default function ProofPage() {
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
-      formData.append('tieu_chi_id', selectedTieuChi);
+      if (selectedTieuChi) formData.append('tieu_chi_id', selectedTieuChi);
+      if (ocrResult?.isValid) formData.append('ocr_valid', 'true');
+      
       await api.post('/proofs/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -103,194 +103,225 @@ export default function ProofPage() {
     }
   };
 
-  const handleReview = async (id: string, trangThai: string) => {
-    setSubmitting(true);
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa minh chứng này?')) return;
     try {
-      await api.put(`/proofs/${id}/review`, { trang_thai: trangThai, ly_do_loai: lyDo });
-      setReviewModal(null);
-      setLyDo('');
+      await api.delete(`/proofs/${id}`);
       fetchProofs();
     } catch (e: any) {
-      alert(e.response?.data?.message || 'Lỗi duyệt minh chứng');
-    } finally {
-      setSubmitting(false);
+      alert(e.response?.data?.message || 'Lỗi khi xóa minh chứng');
     }
   };
 
-  const grouped = {
-    pending: proofs.filter(p => ['DANG_XL', 'CAN_KIEM_TRA'].includes(p.trang_thai)),
-    approved: proofs.filter(p => p.trang_thai === 'DA_DUYET'),
-    rejected: proofs.filter(p => p.trang_thai === 'BI_LOAI'),
-    verified: proofs.filter(p => p.trang_thai === 'DA_XAC_THUC'),
-  };
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800">Minh Chứng SV5T</h2>
-        <p className="text-slate-500 mt-1">Upload giấy khen, chứng chỉ — AI OCR tự động bóc tách</p>
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+      <div className="relative overflow-hidden bg-white rounded-[2rem] p-8 border border-slate-100 shadow-xl shadow-slate-200/50">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+        <div className="relative z-10 flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-black tracking-tight text-slate-800 mb-2">Kho Minh Chứng Thông Minh</h2>
+            <p className="text-slate-500 font-medium">Hệ thống AI tự động phân tích tính hợp lệ (Tên chính chủ & Đơn vị cấp) để ngăn chặn gian lận.</p>
+          </div>
+          <div className="hidden sm:flex items-center gap-3 bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100 text-indigo-700 font-bold">
+            <Sparkles size={20} /> AI Anti-Fraud Active
+          </div>
+        </div>
       </div>
 
-      {/* Upload Zone */}
-      {!canApprove && (
-        <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-6 hover:border-blue-400 transition-colors">
-          <div className="text-center">
-            <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-              <Upload size={24} className="text-blue-500" />
-            </div>
-            <h3 className="font-semibold text-slate-800 mb-1">Upload Minh Chứng</h3>
-            <p className="text-xs text-slate-500 mb-4">Hỗ trợ PDF, JPG, PNG. VNPT SmartReader sẽ tự động OCR.</p>
-            <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleFileSelect} />
-            {!selectedFile ? (
-              <button onClick={() => fileRef.current?.click()}
-                className="px-5 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
-                Chọn file
-              </button>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 bg-slate-50 rounded-xl p-3 text-left">
-                  <FileText size={20} className="text-blue-500 flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-800 truncate">{selectedFile.name}</p>
-                    <p className="text-xs text-slate-500">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+      <div className="grid lg:grid-cols-3 gap-8">
+        {/* Left Column: Upload */}
+        <div className="lg:col-span-1 space-y-6">
+          <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-white opacity-50 z-0"></div>
+            
+            <div className="relative z-10">
+              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <UploadCloud size={20} className="text-indigo-600" /> Tải lên tài liệu
+              </h3>
+              
+              {!selectedFile ? (
+                <div 
+                  onClick={() => fileRef.current?.click()}
+                  className="cursor-pointer border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-white/50 hover:bg-indigo-50/50 rounded-[1.5rem] h-56 flex flex-col items-center justify-center transition-all duration-300 group-hover:shadow-inner"
+                >
+                  <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
+                    <UploadCloud size={28} />
                   </div>
-                  <button onClick={() => { setSelectedFile(null); setOcrResult(null); if (fileRef.current) fileRef.current.value = ''; }}
-                    className="ml-auto text-slate-400 hover:text-red-500">
-                    <X size={16} />
-                  </button>
+                  <span className="font-bold text-indigo-900 text-base">Kéo thả minh chứng vào đây</span>
+                  <span className="text-xs text-indigo-500 mt-1 font-medium px-4 text-center">Hệ thống sẽ quét Tên & Đơn vị cấp bằng AI</span>
+                  <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleFileSelect} />
                 </div>
-
-                {/* OCR Result */}
-                {ocrResult && (
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-left">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle size={15} className="text-green-600" />
-                      <p className="text-sm font-semibold text-green-800">AI OCR hoàn tất (SmartReader)</p>
-                      <span className="ml-auto text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
-                        {Math.round(ocrResult.confidenceScore * 100)}% chính xác
-                      </span>
+              ) : (
+                <div className="space-y-4 animate-in zoom-in-95 duration-300">
+                  <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-start gap-3">
+                    <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                      <FileText size={24} />
                     </div>
-                    <div className="space-y-1 text-xs text-green-700">
-                      <p>👤 {ocrResult.extractedData.ho_ten}</p>
-                      <p>📄 {ocrResult.extractedData.loai_chung_chi}</p>
-                      <p>📅 Ngày cấp: {ocrResult.extractedData.ngay_cap}</p>
-                      <p>✨ Gợi ý tiêu chí: <strong>{ocrResult.suggestedCriteria}</strong></p>
+                    <div className="flex-1 min-w-0 mt-1">
+                      <p className="font-bold text-slate-800 truncate" title={selectedFile.name}>{selectedFile.name}</p>
+                      <p className="text-xs text-slate-500 font-medium">{(selectedFile.size / 1024).toFixed(1)} KB</p>
                     </div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1 text-left">Tiêu chí SV5T liên quan</label>
-                  <select value={selectedTieuChi} onChange={e => setSelectedTieuChi(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-400">
-                    <option value="">-- Hệ thống tự động phân loại --</option>
-                    {tieuChis.map(t => <option key={t.id} value={t.id}>{t.ten_tieu_chi}</option>)}
-                  </select>
-                </div>
-
-                <div className="flex gap-3">
-                  <button onClick={() => { setSelectedFile(null); setOcrResult(null); }}
-                    className="flex-1 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm hover:bg-slate-50">Hủy</button>
-                  <button onClick={handleUpload} disabled={uploading}
-                    className="flex-1 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-                    {uploading ? 'Đang upload...' : 'Xác nhận & Upload'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Review Modal */}
-      {reviewModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-bold text-slate-800 mb-3">Xét duyệt minh chứng</h3>
-            <p className="text-sm text-slate-600 mb-4">File: <strong>{reviewModal.proof.file_url?.split('/').pop()}</strong></p>
-            {reviewModal.proof.trang_thai === 'CAN_KIEM_TRA' && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Lý do loại (nếu từ chối)</label>
-                <textarea value={lyDo} onChange={e => setLyDo(e.target.value)} rows={3}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-red-400"
-                  placeholder="Nhập lý do loại..." />
-              </div>
-            )}
-            <div className="flex gap-3">
-              <button onClick={() => { setReviewModal(null); setLyDo(''); }}
-                className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm">Hủy</button>
-              <button disabled={submitting} onClick={() => handleReview(reviewModal.proof.id, 'BI_LOAI')}
-                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium disabled:opacity-50">Loại</button>
-              <button disabled={submitting} onClick={() => handleReview(reviewModal.proof.id, 'DA_DUYET')}
-                className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-medium disabled:opacity-50">Duyệt</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: 'Đã duyệt', count: grouped.approved.length, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-100' },
-          { label: 'Chờ xử lý', count: grouped.pending.length, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
-          { label: 'Đã xác thực', count: grouped.verified.length, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
-          { label: 'Bị loại', count: grouped.rejected.length, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-100' },
-        ].map(s => (
-          <div key={s.label} className={`${s.bg} border ${s.border} rounded-2xl p-4 text-center`}>
-            <p className={`text-2xl font-bold ${s.color}`}>{s.count}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Proof List */}
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : proofs.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-5xl mb-3">📄</div>
-          <p className="text-slate-500">Chưa có minh chứng nào được upload</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {proofs.map(proof => {
-            const cfg = STATUS_CONFIG[proof.trang_thai] || { label: proof.trang_thai, color: 'bg-slate-100 text-slate-600', icon: null };
-            return (
-              <div key={proof.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
-                <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <FileText size={18} className="text-slate-500" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">{proof.file_url?.split('/').pop()}</p>
-                  <div className="flex gap-2 mt-1 flex-wrap">
-                    <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>
-                      {cfg.icon} {cfg.label}
-                    </span>
-                    {proof.tieu_chi && (
-                      <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{proof.tieu_chi.ten_tieu_chi}</span>
-                    )}
-                    {proof.ai_xac_thuc_muc_do && (
-                      <span className="text-xs text-slate-400">AI: {proof.ai_xac_thuc_muc_do}% chính xác</span>
-                    )}
-                  </div>
-                  {proof.ly_do_loai && <p className="text-xs text-red-500 mt-1">❌ {proof.ly_do_loai}</p>}
-                </div>
-                <div className="flex items-center gap-2">
-                  <p className="text-xs text-slate-400 whitespace-nowrap">{new Date(proof.created_at).toLocaleDateString('vi-VN')}</p>
-                  {canApprove && ['CAN_KIEM_TRA', 'DA_XAC_THUC'].includes(proof.trang_thai) && (
-                    <button onClick={() => setReviewModal({ proof })}
-                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
-                      <Eye size={14} />
+                    <button onClick={() => { setSelectedFile(null); setOcrResult(null); if (fileRef.current) fileRef.current.value = ''; }}
+                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                      <X size={18} />
                     </button>
+                  </div>
+
+                  {ocrLoading && (
+                    <div className="bg-indigo-50/80 border border-indigo-100 rounded-2xl p-5 flex flex-col items-center justify-center gap-3 animate-pulse py-8">
+                      <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-sm font-bold text-indigo-700">AI đang quét tính hợp lệ...</span>
+                    </div>
                   )}
+
+                  {ocrResult && (
+                    <div className={`border rounded-2xl p-5 shadow-sm relative overflow-hidden transition-all ${ocrResult.isValid ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200' : 'bg-gradient-to-br from-rose-50 to-red-50 border-rose-200'}`}>
+                      <div className="absolute -right-4 -top-4 opacity-10"><Sparkles size={100} className={ocrResult.isValid ? 'text-emerald-500' : 'text-rose-500'} /></div>
+                      <div className="relative z-10">
+                        <div className="flex items-center gap-2 mb-3">
+                          {ocrResult.isValid ? <CheckCircle size={20} className="text-emerald-600" /> : <ShieldAlert size={20} className="text-rose-600" />}
+                          <h4 className={`font-black ${ocrResult.isValid ? 'text-emerald-900' : 'text-rose-900'}`}>
+                            {ocrResult.isValid ? 'Minh chứng hợp lệ' : 'Phát hiện rủi ro'}
+                          </h4>
+                        </div>
+                        
+                        {!ocrResult.isValid && (
+                          <div className="mb-4 bg-white/60 p-2.5 rounded-xl border border-rose-100 text-rose-700 text-xs font-bold flex gap-2 items-start">
+                             <XCircle size={14} className="flex-shrink-0 mt-0.5" />
+                             <span>{ocrResult.message}</span>
+                          </div>
+                        )}
+
+                        <div className={`space-y-2 text-sm font-medium bg-white/60 p-3 rounded-xl border ${ocrResult.isValid ? 'text-emerald-800 border-emerald-100/50' : 'text-rose-800 border-rose-100/50'}`}>
+                          <p className="flex justify-between items-center"><span className="opacity-70 flex items-center gap-1"><UserIcon /> Tên:</span> <span className="font-bold">{ocrResult.extractedData.ho_ten}</span></p>
+                          <p className="flex justify-between items-center"><span className="opacity-70 flex items-center gap-1"><Building2 size={12} /> Cấp bởi:</span> <span className="font-bold text-right pl-2 truncate">{ocrResult.extractedData.don_vi_cap || 'Không rõ'}</span></p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Phân loại Tiêu chí (Tùy chọn)</label>
+                    <select value={selectedTieuChi} onChange={e => setSelectedTieuChi(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer">
+                      <option value="">-- Để trống nếu chưa rõ --</option>
+                      {tieuChis.map(t => <option key={t.id} value={t.id}>{t.ten_tieu_chi}</option>)}
+                    </select>
+                  </div>
+
+                  <button onClick={handleUpload} disabled={uploading}
+                    className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none">
+                    {uploading ? 'Đang lưu trữ...' : (ocrResult?.isValid ? 'Lưu và Tự động duyệt' : 'Lưu và Chờ cán bộ duyệt')}
+                  </button>
                 </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: List */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xl font-bold text-slate-800">Thư viện của tôi ({proofs.length})</h3>
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-20">
+              <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : proofs.length === 0 ? (
+            <div className="bg-white border border-slate-100 rounded-[2rem] p-12 text-center shadow-sm">
+              <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText size={40} className="text-slate-300" />
               </div>
-            );
-          })}
+              <h4 className="text-lg font-bold text-slate-700 mb-1">Thư viện trống</h4>
+              <p className="text-slate-500 font-medium">Bạn chưa lưu trữ chứng nhận nào. Kéo thả file vào khung bên trái để bắt đầu.</p>
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 gap-5">
+              {proofs.map(proof => {
+                const isImage = proof.file_url?.match(/\.(jpeg|jpg|gif|png)$/i) != null;
+                const src = proof.file_url?.startsWith('http') ? proof.file_url : `http://localhost:3000${proof.file_url?.startsWith('/') ? '' : '/'}${proof.file_url}`;
+                
+                // Simplified display: either AI Verified or Warning
+                const isVerified = proof.trang_thai === 'DA_XAC_THUC' || proof.trang_thai === 'DA_DUYET' || (proof.ai_xac_thuc_muc_do && proof.ai_xac_thuc_muc_do >= 80);
+                
+                return (
+                  <div key={proof.id} className="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all p-4 flex flex-col h-full relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50 rounded-bl-full -mr-4 -mt-4 opacity-50 z-0 transition-colors group-hover:bg-indigo-50"></div>
+                    
+                    <div className="flex items-center justify-between mb-3 relative z-10">
+                      <div className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${isVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                        {isVerified ? <CheckCircle size={12} /> : <ShieldAlert size={12} />}
+                        {isVerified ? 'AI Xác nhận' : 'AI Cảnh báo'}
+                      </div>
+                    </div>
+                    
+                    <div className="flex-1 relative z-10">
+                      {isImage ? (
+                        <div className="w-full h-36 rounded-2xl bg-slate-100 mb-4 overflow-hidden border border-slate-200 group-hover:border-indigo-200 transition-colors">
+                          <img src={src} alt="Proof" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        </div>
+                      ) : (
+                         <div className="w-full h-36 rounded-2xl bg-slate-50 mb-4 border border-slate-200 flex items-center justify-center">
+                            <FileText size={40} className="text-slate-300" />
+                         </div>
+                      )}
+                      <p className="font-bold text-slate-800 text-sm line-clamp-1 mb-1" title={proof.file_url?.split('/').pop()}>{proof.file_url?.split('/').pop()}</p>
+                      {proof.tieu_chi ? (
+                        <p className="text-xs text-indigo-600 font-semibold line-clamp-1">{proof.tieu_chi.ten_tieu_chi}</p>
+                      ) : (
+                        <p className="text-xs text-slate-400 font-medium">Chưa phân loại tiêu chí</p>
+                      )}
+                    </div>
+                    
+                    <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-medium relative z-10">
+                      <span>{new Date(proof.created_at).toLocaleDateString('vi-VN')}</span>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => setPreviewUrl(src)} className="text-indigo-500 hover:text-indigo-700 font-bold flex items-center gap-0.5 group-hover:translate-x-1 transition-transform cursor-pointer">
+                          Mở file <ChevronRight size={14} />
+                        </button>
+                        <button onClick={() => handleDelete(proof.id)} className="text-rose-500 hover:text-rose-700 font-bold flex items-center gap-0.5 transition-colors cursor-pointer" title="Xóa minh chứng">
+                          <X size={14} /> Xóa
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {previewUrl && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/60 p-4">
+          <div className="bg-white rounded-3xl overflow-hidden shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col relative animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <h3 className="font-bold text-slate-800 flex items-center gap-2"><FileText size={18} /> Xem trước file</h3>
+              <button onClick={() => setPreviewUrl(null)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto bg-slate-100/50 p-6 flex items-center justify-center min-h-[500px]">
+              {previewUrl.match(/\.(jpeg|jpg|gif|png)$/i) ? (
+                <img src={previewUrl} alt="Preview" className="max-w-full max-h-full object-contain rounded-xl shadow-sm" />
+              ) : (
+                <iframe src={previewUrl} className="w-full h-full min-h-[600px] border-0 rounded-xl shadow-sm bg-white" title="Document Preview" />
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+      <circle cx="12" cy="7" r="4"></circle>
+    </svg>
   );
 }

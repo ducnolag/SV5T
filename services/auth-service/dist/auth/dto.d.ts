@@ -11,4 +11,5 @@ export declare class RegisterDto {
     cccd: string;
     vai_tro?: VaiTro;
     don_vi_id?: string;
+    so_dien_thoai?: string;
 }

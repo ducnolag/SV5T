@@ -14,6 +14,7 @@ export declare class JwtStrategy extends JwtStrategy_base {
         cccd: string | null;
         vai_tro: import("shared-database").$Enums.VaiTro;
         don_vi_id: string | null;
+        so_dien_thoai: string | null;
         id: string;
         trang_thai: import("shared-database").$Enums.TrangThaiTK;
         reset_otp: string | null;

@@ -8,6 +8,7 @@ import ActivityPage from './pages/ActivityPage';
 import ProofPage from './pages/ProofPage';
 import ApplicationPage from './pages/ApplicationPage';
 import AdminPage from './pages/AdminPage';
+import ProfilePage from './pages/ProfilePage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuth();
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="proofs" element={<ProofPage />} />
         <Route path="applications" element={<ApplicationPage />} />
         <Route path="admin" element={<AdminPage />} />
+        <Route path="profile" element={<ProfilePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

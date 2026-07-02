@@ -1,7 +1,7 @@
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../utils/useSocket';
-import { Bell, LogOut, Home, CheckSquare, Award, FileText, Settings, X, MessageCircle, ChevronRight } from 'lucide-react';
+import { Bell, LogOut, Home, CheckSquare, Award, FileText, Settings, X, MessageCircle, ChevronRight, User } from 'lucide-react';
 import { useState } from 'react';
 import ChatbotWidget from '../components/ChatbotWidget';
 
@@ -39,6 +39,7 @@ export default function DashboardLayout() {
     { name: 'Minh Chứng', path: '/proofs', icon: Award, show: user?.role === 'SINH_VIEN' || user?.role === 'CB_TRUONG' || user?.role === 'ADMIN' },
     { name: 'Hồ Sơ SV5T', path: '/applications', icon: FileText, show: true },
     { name: 'Quản trị', path: '/admin', icon: Settings, show: user?.role === 'ADMIN' || user?.role === 'CB_TRUONG' },
+    { name: 'Hồ Sơ Cá Nhân', path: '/profile', icon: User, show: true },
   ].filter(i => i.show);
 
   return (
@@ -63,10 +64,10 @@ export default function DashboardLayout() {
         <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-700 font-bold text-sm">
-              {user?.email?.[0]?.toUpperCase() || 'U'}
+              {(user?.ho_ten || user?.email)?.[0]?.toUpperCase() || 'U'}
             </div>
             <div className="min-w-0">
-              <p className="text-slate-800 text-sm font-semibold truncate">{user?.email}</p>
+              <p className="text-slate-800 text-sm font-semibold truncate">{user?.ho_ten || user?.email}</p>
               <span className={`inline-block mt-0.5 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border ${ROLE_COLORS[user?.role || '']}`}>
                 {ROLE_LABELS[user?.role || ''] || user?.role}
               </span>
@@ -150,12 +151,6 @@ export default function DashboardLayout() {
       {/* Corporate AI Chatbot */}
       <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end gap-3">
         {showChatbot && <ChatbotWidget onClose={() => setShowChatbot(false)} />}
-        
-        {!showChatbot && user?.role === 'SINH_VIEN' && (
-          <div className="bg-white text-slate-700 px-4 py-2.5 rounded-lg shadow-lg border border-slate-200 text-sm font-semibold flex items-center gap-2 animate-slide-up">
-            Trợ lý AI hỗ trợ SV5T
-          </div>
-        )}
         
         <button onClick={() => setShowChatbot(!showChatbot)}
           className="w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center text-white hover:bg-blue-700 transition-colors">

@@ -3,13 +3,14 @@ import { ReviewProofDto } from './dto';
 export declare class ProofService {
     private prisma;
     constructor(prisma: PrismaService);
-    uploadProof(userId: string, tieuChiId: string | null, file: Express.Multer.File): Promise<{
+    uploadProof(userId: string, tieuChiId: string | null, file: Express.Multer.File, hoSoId?: string, ocrValid?: string): Promise<{
         tieu_chi: {
             id: string;
             quy_che_id: string;
             ten_tieu_chi: string;
             mo_ta: string | null;
             thu_tu: number | null;
+            so_luong_yeu_cau: number;
         } | null;
     } & {
         trang_thai: string;
@@ -30,6 +31,7 @@ export declare class ProofService {
             ten_tieu_chi: string;
             mo_ta: string | null;
             thu_tu: number | null;
+            so_luong_yeu_cau: number;
         } | null;
     } & {
         trang_thai: string;
@@ -55,6 +57,7 @@ export declare class ProofService {
             ten_tieu_chi: string;
             mo_ta: string | null;
             thu_tu: number | null;
+            so_luong_yeu_cau: number;
         } | null;
     } & {
         trang_thai: string;
@@ -69,6 +72,18 @@ export declare class ProofService {
         tieu_chi_id: string | null;
     })[]>;
     reviewProof(id: string, dto: ReviewProofDto, user: any): Promise<{
+        trang_thai: string;
+        ly_do_loai: string | null;
+        id: string;
+        loai: string;
+        file_url: string;
+        ai_xac_thuc_muc_do: number | null;
+        nguoi_duyet_id: string | null;
+        created_at: Date;
+        nguoi_dung_id: string;
+        tieu_chi_id: string | null;
+    }>;
+    deleteProof(id: string, userId: string): Promise<{
         trang_thai: string;
         ly_do_loai: string | null;
         id: string;

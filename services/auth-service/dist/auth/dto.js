@@ -34,6 +34,7 @@ class RegisterDto {
     cccd;
     vai_tro;
     don_vi_id;
+    so_dien_thoai;
 }
 exports.RegisterDto = RegisterDto;
 __decorate([
@@ -71,4 +72,9 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "don_vi_id", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], RegisterDto.prototype, "so_dien_thoai", void 0);
 //# sourceMappingURL=dto.js.map

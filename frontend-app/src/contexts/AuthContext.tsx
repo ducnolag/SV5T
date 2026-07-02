@@ -30,7 +30,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (token) {
       try {
         const decoded: any = jwtDecode(token);
-        setUser({ id: decoded.sub, email: decoded.email, role: decoded.role, don_vi_id: decoded.don_vi_id });
+        const userData = {
+          id: decoded.sub || decoded.id,
+          email: decoded.email,
+          role: decoded.role || decoded.vai_tro,
+          don_vi_id: decoded.don_vi_id,
+          ho_ten: decoded.ho_ten
+        };
+        setUser(userData);
       } catch {
         setToken(null);
         localStorage.removeItem('token');

@@ -9,6 +9,8 @@ export declare class AuthController {
             id: string;
             email: string;
             ho_ten: string;
+            msv: string | null;
+            khoa: any;
             vai_tro: import("shared-database").$Enums.VaiTro;
             don_vi_id: string | null;
         };
@@ -47,5 +49,26 @@ export declare class AuthController {
         success: boolean;
         message: string;
     }>;
-    getProfile(req: any): any;
+    getProfile(req: any): Promise<{
+        id: string;
+        email: string;
+        ho_ten: string;
+        msv: string | null;
+        so_dien_thoai: string | null;
+        khoa: any;
+        vai_tro: import("shared-database").$Enums.VaiTro;
+        don_vi_id: string | null;
+    }>;
+    updateProfile(req: any, body: any): Promise<{
+        success: boolean;
+        user: {
+            id: string;
+            email: string;
+            ho_ten: string;
+            msv: string | null;
+            so_dien_thoai: string | null;
+            vai_tro: import("shared-database").$Enums.VaiTro;
+            don_vi_id: string | null;
+        };
+    }>;
 }

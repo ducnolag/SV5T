@@ -31,11 +31,14 @@ let ApplicationController = class ApplicationController {
     getQuyChes() {
         return this.appService.getQuyChes();
     }
+    getApplicationById(id, req) {
+        return this.appService.getApplicationById(id, req.user);
+    }
     create(dto, req) {
         return this.appService.createDraft(req.user.id, dto);
     }
-    submit(id, req) {
-        return this.appService.submitApplication(id, req.user.id);
+    submitApplication(id, req, body) {
+        return this.appService.submitApplication(id, req.user.id, body.minh_chung_ids || []);
     }
     review(id, dto, req) {
         return this.appService.reviewApplication(id, dto, req.user);
@@ -66,6 +69,14 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ApplicationController.prototype, "getQuyChes", null);
 __decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], ApplicationController.prototype, "getApplicationById", null);
+__decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
@@ -77,10 +88,11 @@ __decorate([
     (0, common_1.Put)(':id/submit'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", void 0)
-], ApplicationController.prototype, "submit", null);
+], ApplicationController.prototype, "submitApplication", null);
 __decorate([
     (0, common_1.Put)(':id/review'),
     __param(0, (0, common_1.Param)('id')),

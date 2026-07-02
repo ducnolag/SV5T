@@ -40,6 +40,7 @@ model NguoiDung {
   vai_tro    VaiTro   @default(SINH_VIEN)
   cccd       String?  @unique @db.VarChar(255)
   trang_thai TrangThaiTK @default(ACTIVE)
+  so_dien_thoai String?  @db.VarChar(20)
   reset_otp  String?  @db.VarChar(10)
   reset_otp_expires DateTime?
   created_at DateTime @default(now())
@@ -88,6 +89,7 @@ model TieuChi {
   ten_tieu_chi String   @db.VarChar(255)
   mo_ta        String?  @db.Text
   thu_tu       Int?
+  so_luong_yeu_cau Int  @default(1)
   
   quy_che      QuyChe   @relation(fields: [quy_che_id], references: [id])
   hoat_dongs   HoatDong[]
@@ -132,7 +134,8 @@ model MinhChung {
   nguoi_dung_id  String   @db.Uuid
   tieu_chi_id    String?  @db.Uuid
   loai           String   @db.VarChar(20) // NOI_BO, BEN_NGOAI
-  file_url       String   @db.VarChar(500)
+  ten_minh_chung String?  @db.VarChar(255)
+  file_url       String   @db.Text
   trang_thai     String   @db.VarChar(30) // DANG_XL, DA_XAC_THUC, CAN_KIEM_TRA, DA_DUYET, BI_LOAI
   ai_xac_thuc_muc_do Int? // Confidence score
   nguoi_duyet_id String?  @db.Uuid

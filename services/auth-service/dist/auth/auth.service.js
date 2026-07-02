@@ -73,7 +73,7 @@ let AuthService = class AuthService {
         if (user.trang_thai === 'LOCKED') {
             throw new common_1.UnauthorizedException('Tài khoản đã bị khóa');
         }
-        const payload = { sub: user.id, email: user.email, role: user.vai_tro, don_vi_id: user.don_vi_id };
+        const payload = { sub: user.id, email: user.email, role: user.vai_tro, don_vi_id: user.don_vi_id, ho_ten: user.ho_ten };
         const access_token = this.jwtService.sign(payload);
         await this.auditService.logAction(user.id, 'LOGIN', 'USER', user.id);
         return {
@@ -82,6 +82,8 @@ let AuthService = class AuthService {
                 id: user.id,
                 email: user.email,
                 ho_ten: user.ho_ten,
+                msv: user.msv,
+                khoa: user.khoa || '',
                 vai_tro: user.vai_tro,
                 don_vi_id: user.don_vi_id,
             },
@@ -126,6 +128,7 @@ let AuthService = class AuthService {
                 mat_khau: hashedPassword,
                 ho_ten: dto.ho_ten,
                 msv: dto.msv,
+                so_dien_thoai: dto.so_dien_thoai,
                 cccd: encryptedCccd,
                 vai_tro: dto.vai_tro || shared_database_1.VaiTro.SINH_VIEN,
                 don_vi_id: actualDonViId,
@@ -308,6 +311,16 @@ let AuthService = class AuthService {
             if (!compareMatch) {
                 throw new common_1.BadRequestException('Khuôn mặt không khớp với thẻ CCCD');
             }
+            const cccd = ocrData.id || ocrData.so_cccd || ocrData.idNumber || ocrData.id_number;
+            if (cccd) {
+                const encryptedCccd = `ENCRYPTED_${cccd}`;
+                const existingUser = await this.prisma.nguoiDung.findUnique({
+                    where: { cccd: encryptedCccd }
+                });
+                if (existingUser) {
+                    throw new common_1.BadRequestException('Tài khoản với số CCCD này đã tồn tại trên hệ thống. Vui lòng quay lại Đăng nhập.');
+                }
+            }
             return {
                 success: true,
                 data: {
@@ -328,6 +341,44 @@ let AuthService = class AuthService {
         console.log(`Using VNPT eKYC Token: ${tokenStr.substring(0, 20)}...`);
         await new Promise(resolve => setTimeout(resolve, 500));
         return true;
+    }
+    async updateProfile(userId, data) {
+        const updatedUser = await this.prisma.nguoiDung.update({
+            where: { id: userId },
+            data: {
+                msv: data.msv,
+                so_dien_thoai: data.so_dien_thoai,
+            },
+        });
+        return {
+            success: true,
+            user: {
+                id: updatedUser.id,
+                email: updatedUser.email,
+                ho_ten: updatedUser.ho_ten,
+                msv: updatedUser.msv,
+                so_dien_thoai: updatedUser.so_dien_thoai,
+                vai_tro: updatedUser.vai_tro,
+                don_vi_id: updatedUser.don_vi_id,
+            }
+        };
+    }
+    async getProfile(userId) {
+        const user = await this.prisma.nguoiDung.findUnique({
+            where: { id: userId }
+        });
+        if (!user)
+            throw new common_1.BadRequestException('User not found');
+        return {
+            id: user.id,
+            email: user.email,
+            ho_ten: user.ho_ten,
+            msv: user.msv,
+            so_dien_thoai: user.so_dien_thoai,
+            khoa: user.khoa || '',
+            vai_tro: user.vai_tro,
+            don_vi_id: user.don_vi_id,
+        };
     }
 };
 exports.AuthService = AuthService;

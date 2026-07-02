@@ -42,6 +42,12 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
   getProfile(@Request() req: any) {
-    return req.user;
+    return this.authService.getProfile(req.user.id);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('me') // Using POST for update to be safe, or PUT
+  updateProfile(@Request() req: any, @Body() body: any) {
+    return this.authService.updateProfile(req.user.id, body);
   }
 }

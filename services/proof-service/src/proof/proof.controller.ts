@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Body, Param, UseInterceptors, UploadedFile, UseGuards, Request, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Put, Delete, Body, Param, UseInterceptors, UploadedFile, UseGuards, Request, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ProofService } from './proof.service';
 import { ReviewProofDto } from './dto';
@@ -14,13 +14,16 @@ export class ProofController {
   upload(
     @UploadedFile() file: Express.Multer.File,
     @Body('tieu_chi_id') tieuChiId: string,
+    @Body('ho_so_id') hoSoId: string,
+    @Body('ocr_valid') ocrValid: string,
     @Request() req: any
   ) {
     if (!file) {
       throw new BadRequestException('Vui lòng chọn file minh chứng');
     }
     const tieuChiIdOrNull = tieuChiId && tieuChiId.length > 0 ? tieuChiId : null;
-    return this.proofService.uploadProof(req.user.id, tieuChiIdOrNull, file);
+    const hoSoIdOrUndefined = hoSoId && hoSoId.length > 0 ? hoSoId : undefined;
+    return this.proofService.uploadProof(req.user.id, tieuChiIdOrNull, file, hoSoIdOrUndefined, ocrValid);
   }
 
   @Get('me')
@@ -31,5 +34,10 @@ export class ProofController {
   @Put(':id/review')
   review(@Param('id') id: string, @Body() dto: ReviewProofDto, @Request() req: any) {
     return this.proofService.reviewProof(id, dto, req.user);
+  }
+
+  @Delete(':id')
+  deleteProof(@Param('id') id: string, @Request() req: any) {
+    return this.proofService.deleteProof(id, req.user.id);
   }
 }

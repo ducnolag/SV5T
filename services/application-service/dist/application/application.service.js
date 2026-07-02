@@ -26,18 +26,33 @@ let ApplicationService = class ApplicationService {
         return this.prisma.hoSo.findMany({
             where: { nguoi_dung_id: userId },
             include: {
-                quy_che: { include: { tieu_chis: true } },
+                quy_che: { include: { tieu_chis: { orderBy: { thu_tu: 'asc' } } } },
                 minh_chungs: true,
             },
             orderBy: { created_at: 'desc' },
         });
     }
+    async getApplicationById(id, user) {
+        const app = await this.prisma.hoSo.findUnique({
+            where: { id },
+            include: {
+                quy_che: { include: { tieu_chis: { orderBy: { thu_tu: 'asc' } } } },
+                minh_chungs: { include: { tieu_chi: true } },
+            }
+        });
+        if (!app)
+            throw new common_1.NotFoundException('Không tìm thấy hồ sơ');
+        if (user.role === shared_database_1.VaiTro.SINH_VIEN && app.nguoi_dung_id !== user.id) {
+            throw new common_1.ForbiddenException('Bạn không có quyền xem hồ sơ này');
+        }
+        return app;
+    }
     async getPendingApplications(user) {
         const pendingStateMap = {
-            [shared_database_1.VaiTro.CB_TRUONG]: [shared_database_1.TrangThaiHoSo.CHO_DUYET_TRUONG],
-            [shared_database_1.VaiTro.CB_TINH]: [shared_database_1.TrangThaiHoSo.CHO_DUYET_TINH],
-            [shared_database_1.VaiTro.CB_TW]: [shared_database_1.TrangThaiHoSo.CHO_DUYET_TW],
-            [shared_database_1.VaiTro.ADMIN]: [shared_database_1.TrangThaiHoSo.CHO_DUYET_TRUONG, shared_database_1.TrangThaiHoSo.CHO_DUYET_TINH, shared_database_1.TrangThaiHoSo.CHO_DUYET_TW],
+            [shared_database_1.VaiTro.CB_TRUONG]: [shared_database_1.TrangThaiHoSo.CHO_DUYET_TRUONG, shared_database_1.TrangThaiHoSo.DAT_TRUONG],
+            [shared_database_1.VaiTro.CB_TINH]: [shared_database_1.TrangThaiHoSo.CHO_DUYET_TINH, shared_database_1.TrangThaiHoSo.DAT_TINH],
+            [shared_database_1.VaiTro.CB_TW]: [shared_database_1.TrangThaiHoSo.CHO_DUYET_TW, shared_database_1.TrangThaiHoSo.DAT_SV5T],
+            [shared_database_1.VaiTro.ADMIN]: [shared_database_1.TrangThaiHoSo.CHO_DUYET_TRUONG, shared_database_1.TrangThaiHoSo.DAT_TRUONG, shared_database_1.TrangThaiHoSo.CHO_DUYET_TINH, shared_database_1.TrangThaiHoSo.DAT_TINH, shared_database_1.TrangThaiHoSo.CHO_DUYET_TW, shared_database_1.TrangThaiHoSo.DAT_SV5T],
         };
         const states = pendingStateMap[user.role] || [];
         return this.prisma.hoSo.findMany({
@@ -84,10 +99,10 @@ let ApplicationService = class ApplicationService {
             }
         });
     }
-    async submitApplication(id, userId) {
-        const app = await this.prisma.hoSo.findUnique({
+    async submitApplication(id, userId, minhChungIds) {
+        let app = await this.prisma.hoSo.findUnique({
             where: { id },
-            include: { minh_chungs: true }
+            include: { minh_chungs: true, quy_che: { include: { tieu_chis: true } } }
         });
         if (!app || app.nguoi_dung_id !== userId) {
             throw new common_1.NotFoundException('Không tìm thấy hồ sơ');
@@ -95,9 +110,39 @@ let ApplicationService = class ApplicationService {
         if (app.trang_thai !== shared_database_1.TrangThaiHoSo.DANG_TAO) {
             throw new common_1.BadRequestException('Chỉ có thể nộp hồ sơ ở trạng thái nháp');
         }
-        const aiFlag = app.minh_chungs.length >= 5 ? 'XANH' : app.minh_chungs.length >= 3 ? 'VANG' : 'DO';
-        const ghiChuAi = `AI sơ duyệt: ${app.minh_chungs.length} minh chứng. Phân loại ${aiFlag}.`;
-        return this.prisma.hoSo.update({
+        if (minhChungIds && minhChungIds.length > 0) {
+            await this.prisma.hoSo.update({
+                where: { id },
+                data: {
+                    minh_chungs: {
+                        set: [],
+                        connect: minhChungIds.map(mcId => ({ id: mcId }))
+                    }
+                }
+            });
+            app = await this.prisma.hoSo.findUnique({
+                where: { id },
+                include: { minh_chungs: true, quy_che: { include: { tieu_chis: true } } }
+            });
+            if (!app) {
+                throw new common_1.NotFoundException('Không tìm thấy hồ sơ');
+            }
+        }
+        for (const tc of app.quy_che.tieu_chis) {
+            const tcProofs = app.minh_chungs.filter(mc => mc.tieu_chi_id === tc.id);
+            if (tcProofs.length < tc.so_luong_yeu_cau) {
+                throw new common_1.BadRequestException(`Tiêu chí "${tc.ten_tieu_chi}" chưa đủ minh chứng. Yêu cầu: ${tc.so_luong_yeu_cau}, Đã có: ${tcProofs.length}`);
+            }
+        }
+        const totalAiScore = app.minh_chungs.reduce((acc, mc) => acc + (mc.ai_xac_thuc_muc_do || 0), 0);
+        const avgAiScore = totalAiScore / Math.max(app.minh_chungs.length, 1);
+        let aiFlag = 'DO';
+        if (avgAiScore > 85)
+            aiFlag = 'XANH';
+        else if (avgAiScore > 50)
+            aiFlag = 'VANG';
+        const ghiChuAi = `AI sơ duyệt: Điểm eKYC trung bình ${avgAiScore.toFixed(1)}%. Phân loại ${aiFlag}.`;
+        const updated = await this.prisma.hoSo.update({
             where: { id },
             data: {
                 trang_thai: shared_database_1.TrangThaiHoSo.CHO_DUYET_TRUONG,
@@ -107,6 +152,11 @@ let ApplicationService = class ApplicationService {
                 ghi_chu_ai: ghiChuAi,
             }
         });
+        try {
+            await axios_1.default.post('http://localhost:3007/internal/broadcast', { message: 'REFRESH_APPLICATIONS' });
+        }
+        catch (e) { }
+        return updated;
     }
     async reviewApplication(id, dto, user) {
         if (user.role === shared_database_1.VaiTro.SINH_VIEN) {
@@ -143,6 +193,7 @@ let ApplicationService = class ApplicationService {
                 userId: updatedApp.nguoi_dung_id,
                 message: `Hồ sơ SV5T của bạn: ${stateLabel[dto.trang_thai] || dto.trang_thai}`,
             });
+            await axios_1.default.post(`${notifyUrl}/internal/broadcast`, { message: 'REFRESH_APPLICATIONS' });
         }
         catch (e) {
             console.error('Lỗi khi gửi thông báo:', e.message);
@@ -175,6 +226,10 @@ let ApplicationService = class ApplicationService {
                 data: { trang_thai: nextState, cap_hien_tai: nextCap }
             });
         }
+        try {
+            await axios_1.default.post('http://localhost:3007/internal/broadcast', { message: 'REFRESH_APPLICATIONS' });
+        }
+        catch (e) { }
         return { message: `Đã trình tuyến trên thành công ${apps.length} hồ sơ` };
     }
 };

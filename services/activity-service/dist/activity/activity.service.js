@@ -30,7 +30,7 @@ let ActivityService = class ActivityService {
         if (user.role === shared_database_1.VaiTro.SINH_VIEN) {
             throw new common_1.ForbiddenException('Sinh viên không được tạo hoạt động');
         }
-        return this.prisma.hoatDong.create({
+        const created = await this.prisma.hoatDong.create({
             data: {
                 don_vi_tc_id: dto.don_vi_tc_id,
                 ten_hoat_dong: dto.ten_hoat_dong,
@@ -45,6 +45,12 @@ let ActivityService = class ActivityService {
                 }
             }
         });
+        try {
+            const axios = require('axios');
+            await axios.post('http://localhost:3007/internal/broadcast', { message: 'REFRESH_ACTIVITIES' });
+        }
+        catch (e) { }
+        return created;
     }
     async approveActivity(id, dto, user) {
         if (user.role === shared_database_1.VaiTro.SINH_VIEN) {
@@ -57,12 +63,18 @@ let ActivityService = class ActivityService {
         if (!activity) {
             throw new common_1.NotFoundException('Không tìm thấy hoạt động');
         }
-        return this.prisma.hoatDong.update({
+        const updated = await this.prisma.hoatDong.update({
             where: { id },
             data: {
                 trang_thai: dto.trang_thai,
             },
         });
+        try {
+            const axios = require('axios');
+            await axios.post('http://localhost:3007/internal/broadcast', { message: 'REFRESH_ACTIVITIES' });
+        }
+        catch (e) { }
+        return updated;
     }
 };
 exports.ActivityService = ActivityService;

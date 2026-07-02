@@ -23,14 +23,19 @@ export class ApplicationController {
     return this.appService.getQuyChes();
   }
 
+  @Get(':id')
+  getApplicationById(@Param('id') id: string, @Request() req: any) {
+    return this.appService.getApplicationById(id, req.user);
+  }
+
   @Post()
   create(@Body() dto: CreateApplicationDto, @Request() req: any) {
     return this.appService.createDraft(req.user.id, dto);
   }
 
   @Put(':id/submit')
-  submit(@Param('id') id: string, @Request() req: any) {
-    return this.appService.submitApplication(id, req.user.id);
+  submitApplication(@Param('id') id: string, @Request() req: any, @Body() body: any) {
+    return this.appService.submitApplication(id, req.user.id, body.minh_chung_ids || []);
   }
 
   @Put(':id/review')

@@ -13,6 +13,8 @@ export declare class AuthService {
             id: string;
             email: string;
             ho_ten: string;
+            msv: string | null;
+            khoa: any;
             vai_tro: import("shared-database").$Enums.VaiTro;
             don_vi_id: string | null;
         };
@@ -43,4 +45,26 @@ export declare class AuthService {
         };
     }>;
     private mockVnptEkyc;
+    updateProfile(userId: string, data: any): Promise<{
+        success: boolean;
+        user: {
+            id: string;
+            email: string;
+            ho_ten: string;
+            msv: string | null;
+            so_dien_thoai: string | null;
+            vai_tro: import("shared-database").$Enums.VaiTro;
+            don_vi_id: string | null;
+        };
+    }>;
+    getProfile(userId: string): Promise<{
+        id: string;
+        email: string;
+        ho_ten: string;
+        msv: string | null;
+        so_dien_thoai: string | null;
+        khoa: any;
+        vai_tro: import("shared-database").$Enums.VaiTro;
+        don_vi_id: string | null;
+    }>;
 }

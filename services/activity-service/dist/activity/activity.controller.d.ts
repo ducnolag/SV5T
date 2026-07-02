@@ -18,6 +18,7 @@ export declare class ActivityController {
             quy_che_id: string;
             ten_tieu_chi: string;
             thu_tu: number | null;
+            so_luong_yeu_cau: number;
         }[];
     } & {
         don_vi_tc_id: string;

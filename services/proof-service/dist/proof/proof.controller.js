@@ -23,18 +23,22 @@ let ProofController = class ProofController {
     constructor(proofService) {
         this.proofService = proofService;
     }
-    upload(file, tieuChiId, req) {
+    upload(file, tieuChiId, hoSoId, ocrValid, req) {
         if (!file) {
             throw new common_1.BadRequestException('Vui lòng chọn file minh chứng');
         }
         const tieuChiIdOrNull = tieuChiId && tieuChiId.length > 0 ? tieuChiId : null;
-        return this.proofService.uploadProof(req.user.id, tieuChiIdOrNull, file);
+        const hoSoIdOrUndefined = hoSoId && hoSoId.length > 0 ? hoSoId : undefined;
+        return this.proofService.uploadProof(req.user.id, tieuChiIdOrNull, file, hoSoIdOrUndefined, ocrValid);
     }
     getMyProofs(req) {
         return this.proofService.getMyProofs(req.user.id);
     }
     review(id, dto, req) {
         return this.proofService.reviewProof(id, dto, req.user);
+    }
+    deleteProof(id, req) {
+        return this.proofService.deleteProof(id, req.user.id);
     }
 };
 exports.ProofController = ProofController;
@@ -43,9 +47,11 @@ __decorate([
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
     __param(0, (0, common_1.UploadedFile)()),
     __param(1, (0, common_1.Body)('tieu_chi_id')),
-    __param(2, (0, common_1.Request)()),
+    __param(2, (0, common_1.Body)('ho_so_id')),
+    __param(3, (0, common_1.Body)('ocr_valid')),
+    __param(4, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:paramtypes", [Object, String, String, String, Object]),
     __metadata("design:returntype", void 0)
 ], ProofController.prototype, "upload", null);
 __decorate([
@@ -64,6 +70,14 @@ __decorate([
     __metadata("design:paramtypes", [String, dto_1.ReviewProofDto, Object]),
     __metadata("design:returntype", void 0)
 ], ProofController.prototype, "review", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], ProofController.prototype, "deleteProof", null);
 exports.ProofController = ProofController = __decorate([
     (0, common_1.Controller)('proofs'),
     (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),

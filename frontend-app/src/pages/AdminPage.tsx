@@ -33,13 +33,16 @@ const VAI_TRO_COLORS: Record<string, string> = {
 
 export default function AdminPage() {
   const { isRole } = useAuth();
-  const [tab, setTab] = useState<'users' | 'units'>('users');
+  const [tab, setTab] = useState<'users' | 'units' | 'rules'>('users');
   const [users, setUsers] = useState<NguoiDung[]>([]);
   const [units, setUnits] = useState<any[]>([]);
+  const [rules, setRules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showAddUnit, setShowAddUnit] = useState(false);
+  const [showAddRule, setShowAddRule] = useState(false);
   const [newUnit, setNewUnit] = useState({ ten_don_vi: '', cap_do: 'KHOA_CLB', parent_id: '' });
+  const [newRule, setNewRule] = useState({ nam_hoc: '2025-2026', ngay_mo_cong: '', ngay_dong_cong: '', don_vi_id: '' });
   const [submitting, setSubmitting] = useState(false);
 
   if (!isRole('ADMIN', 'CB_TRUONG')) {
@@ -56,10 +59,12 @@ export default function AdminPage() {
     setLoading(true);
     try {
       // These endpoints need to be added to auth-service and unit-service
-      const [unitRes] = await Promise.all([
+      const [unitRes, ruleRes] = await Promise.all([
         api.get('/units'),
+        api.get('/applications/quy-ches')
       ]);
       setUnits(unitRes.data || []);
+      setRules(ruleRes.data || []);
       // Mock users from seed data
       setUsers([
         { id: '1', ho_ten: 'Nguyễn Văn An', email: 'sinhvien1@vnu.edu.vn', msv: '21020001', vai_tro: 'SINH_VIEN', trang_thai: 'ACTIVE' },
@@ -93,6 +98,13 @@ export default function AdminPage() {
     }
   };
 
+  const handleAddRule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // This assumes backend has POST /applications/quy-ches (not fully implemented in hackathon phase yet, but UI is ready)
+    alert('Đã lưu quy chế mới (Chế độ mô phỏng)');
+    setShowAddRule(false);
+  };
+
   const filteredUsers = users.filter(u =>
     u.ho_ten.toLowerCase().includes(search.toLowerCase()) ||
     u.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -111,7 +123,7 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div className="flex gap-2">
-        {[['users', Users, 'Tài khoản'], ['units', Building2, 'Đơn vị']].map(([val, Icon, label]) => (
+        {[['users', Users, 'Tài khoản'], ['units', Building2, 'Đơn vị'], ['rules', Shield, 'Quy chế xét duyệt']].map(([val, Icon, label]) => (
           <button key={val as string} onClick={() => setTab(val as any)}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
               tab === val ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:border-blue-300'
@@ -190,7 +202,7 @@ export default function AdminPage() {
             )}
           </div>
         </div>
-      ) : (
+      ) : tab === 'units' ? (
         <div className="space-y-4">
           <div className="flex justify-end">
             <button onClick={() => setShowAddUnit(true)}
@@ -270,6 +282,92 @@ export default function AdminPage() {
             {!units.length && (
               <div className="text-center py-10 text-slate-400">Chưa có đơn vị nào</div>
             )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+            <p className="text-slate-600 font-medium">Danh sách Quy chế / Đợt xét danh hiệu</p>
+            <button onClick={() => setShowAddRule(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">
+              <Plus size={16} /> Thêm đợt xét
+            </button>
+          </div>
+
+          {showAddRule && (
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6">
+                <h3 className="text-lg font-bold text-slate-800 mb-5">Cấu hình Đợt xét duyệt mới</h3>
+                <form onSubmit={handleAddRule} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Năm học *</label>
+                    <input required value={newRule.nam_hoc} onChange={e => setNewRule({ ...newRule, nam_hoc: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-400" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Ngày mở cổng *</label>
+                      <input required type="date" value={newRule.ngay_mo_cong} onChange={e => setNewRule({ ...newRule, ngay_mo_cong: e.target.value })}
+                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Ngày đóng cổng *</label>
+                      <input required type="date" value={newRule.ngay_dong_cong} onChange={e => setNewRule({ ...newRule, ngay_dong_cong: e.target.value })}
+                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Đơn vị chủ quản *</label>
+                    <select required value={newRule.don_vi_id} onChange={e => setNewRule({ ...newRule, don_vi_id: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                      <option value="">-- Chọn đơn vị --</option>
+                      {units.map(u => <option key={u.id} value={u.id}>{u.ten_don_vi}</option>)}
+                    </select>
+                  </div>
+                  <div className="bg-blue-50 p-3 rounded-xl border border-blue-100">
+                     <p className="text-xs text-blue-700">Lưu ý: Mặc định hệ thống sẽ tự động tạo 5 tiêu chí: <strong>Đạo đức tốt, Học tập tốt, Thể lực tốt, Tình nguyện tốt, Hội nhập tốt</strong> cho đợt xét này.</p>
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button type="button" onClick={() => setShowAddRule(false)}
+                      className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm">Hủy</button>
+                    <button type="submit"
+                      className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">
+                      Lưu quy chế
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-4">
+            {rules.map(r => (
+              <div key={r.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-lg">Năm học {r.nam_hoc}</h4>
+                    <p className="text-sm text-slate-500">{r.don_vi?.ten_don_vi}</p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${new Date(r.ngay_dong_cong) > new Date() ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+                    {new Date(r.ngay_dong_cong) > new Date() ? 'Đang mở' : 'Đã đóng'}
+                  </span>
+                </div>
+                <div className="text-sm text-slate-600 grid grid-cols-2 gap-2 mb-4 bg-slate-50 p-3 rounded-xl">
+                  <p>Mở: <strong>{new Date(r.ngay_mo_cong).toLocaleDateString('vi-VN')}</strong></p>
+                  <p>Đóng: <strong>{new Date(r.ngay_dong_cong).toLocaleDateString('vi-VN')}</strong></p>
+                </div>
+                <div>
+                   <p className="text-xs font-semibold uppercase text-slate-400 mb-2">Tiêu chí xét duyệt ({r.tieu_chis?.length || 0})</p>
+                   <div className="flex flex-wrap gap-2">
+                     {(r.tieu_chis || []).map((tc: any) => (
+                       <span key={tc.id} className="bg-indigo-50 border border-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-medium">
+                         {tc.ten_tieu_chi}
+                       </span>
+                     ))}
+                   </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

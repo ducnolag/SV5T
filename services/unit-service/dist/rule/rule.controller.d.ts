@@ -18,6 +18,7 @@ export declare class RuleController {
             ten_tieu_chi: string;
             mo_ta: string | null;
             thu_tu: number | null;
+            so_luong_yeu_cau: number;
         }[];
     } & {
         id: string;
@@ -35,6 +36,7 @@ export declare class RuleController {
             ten_tieu_chi: string;
             mo_ta: string | null;
             thu_tu: number | null;
+            so_luong_yeu_cau: number;
         }[];
     } & {
         id: string;

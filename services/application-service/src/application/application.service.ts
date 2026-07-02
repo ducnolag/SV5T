@@ -12,11 +12,26 @@ export class ApplicationService {
     return this.prisma.hoSo.findMany({
       where: { nguoi_dung_id: userId },
       include: {
-        quy_che: { include: { tieu_chis: true } },
+        quy_che: { include: { tieu_chis: { orderBy: { thu_tu: 'asc' } } } },
         minh_chungs: true,
       },
       orderBy: { created_at: 'desc' },
     });
+  }
+
+  async getApplicationById(id: string, user: any) {
+    const app = await this.prisma.hoSo.findUnique({
+      where: { id },
+      include: {
+        quy_che: { include: { tieu_chis: { orderBy: { thu_tu: 'asc' } } } },
+        minh_chungs: { include: { tieu_chi: true } },
+      }
+    });
+    if (!app) throw new NotFoundException('Không tìm thấy hồ sơ');
+    if (user.role === VaiTro.SINH_VIEN && app.nguoi_dung_id !== user.id) {
+       throw new ForbiddenException('Bạn không có quyền xem hồ sơ này');
+    }
+    return app;
   }
 
   async getPendingApplications(user: any) {
@@ -77,10 +92,10 @@ export class ApplicationService {
     });
   }
 
-  async submitApplication(id: string, userId: string) {
-    const app = await this.prisma.hoSo.findUnique({
+  async submitApplication(id: string, userId: string, minhChungIds: string[]) {
+    let app = await this.prisma.hoSo.findUnique({
       where: { id },
-      include: { minh_chungs: true }
+      include: { minh_chungs: true, quy_che: { include: { tieu_chis: true } } }
     });
 
     if (!app || app.nguoi_dung_id !== userId) {
@@ -91,9 +106,44 @@ export class ApplicationService {
       throw new BadRequestException('Chỉ có thể nộp hồ sơ ở trạng thái nháp');
     }
 
+    // Connect the provided minh_chung_ids to the HoSo
+    if (minhChungIds && minhChungIds.length > 0) {
+      await this.prisma.hoSo.update({
+        where: { id },
+        data: {
+          minh_chungs: {
+            set: [], // Clear existing
+            connect: minhChungIds.map(mcId => ({ id: mcId }))
+          }
+        }
+      });
+      // Re-fetch app with updated proofs
+      app = await this.prisma.hoSo.findUnique({
+        where: { id },
+        include: { minh_chungs: true, quy_che: { include: { tieu_chis: true } } }
+      });
+      
+      if (!app) {
+         throw new NotFoundException('Không tìm thấy hồ sơ');
+      }
+    }
+
+    // Check criteria completion
+    for (const tc of app.quy_che.tieu_chis) {
+      const tcProofs = app.minh_chungs.filter(mc => mc.tieu_chi_id === tc.id);
+      if (tcProofs.length < tc.so_luong_yeu_cau) {
+        throw new BadRequestException(`Tiêu chí "${tc.ten_tieu_chi}" chưa đủ minh chứng. Yêu cầu: ${tc.so_luong_yeu_cau}, Đã có: ${tcProofs.length}`);
+      }
+    }
+
     // AI sơ duyệt: phân loại Xanh/Vàng/Đỏ
-    const aiFlag = app.minh_chungs.length >= 5 ? 'XANH' : app.minh_chungs.length >= 3 ? 'VANG' : 'DO';
-    const ghiChuAi = `AI sơ duyệt: ${app.minh_chungs.length} minh chứng. Phân loại ${aiFlag}.`;
+    const totalAiScore = app.minh_chungs.reduce((acc, mc) => acc + (mc.ai_xac_thuc_muc_do || 0), 0);
+    const avgAiScore = totalAiScore / Math.max(app.minh_chungs.length, 1);
+    let aiFlag = 'DO';
+    if (avgAiScore > 85) aiFlag = 'XANH';
+    else if (avgAiScore > 50) aiFlag = 'VANG';
+
+    const ghiChuAi = `AI sơ duyệt: Điểm eKYC trung bình ${avgAiScore.toFixed(1)}%. Phân loại ${aiFlag}.`;
 
     const updated = await this.prisma.hoSo.update({
       where: { id },

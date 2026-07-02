@@ -78,13 +78,29 @@ export default function DashboardHome() {
   const [myApp, setMyApp] = useState<any>(null);
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0 });
+  const [criteriaProgress, setCriteriaProgress] = useState([0, 0, 0, 0, 0]);
   const deadline = new Date('2026-10-15T23:59:59');
-
-  const criteriaProgress = [68, 80, 45, 90, 55];
 
   useEffect(() => {
     if (isRole('SINH_VIEN')) {
-      api.get('/applications/my').then(r => setMyApp(r.data[0] || null)).catch(() => {});
+      api.get('/applications/my').then(r => {
+        if (r.data[0]) {
+          api.get(`/applications/${r.data[0].id}`).then(res => {
+            setMyApp(res.data);
+            if (res.data.minh_chungs && res.data.quy_che?.tieu_chis) {
+              const progress = CRITERIA_NAMES.map(name => {
+                const tc = res.data.quy_che.tieu_chis.find((t: any) => t.ten_tieu_chi.includes(name.split(' ')[0]));
+                if (tc) {
+                  const proof = res.data.minh_chungs.find((p: any) => p.tieu_chi_id === tc.id);
+                  return proof ? (proof.ai_xac_thuc_muc_do ?? 100) : 0;
+                }
+                return 0;
+              });
+              setCriteriaProgress(progress);
+            }
+          });
+        }
+      }).catch(() => {});
       api.get(`/ai/recommendations/${user?.id || 'default'}`).then(r => setRecs(r.data)).catch(() => {});
     }
     if (isRole('CB_TRUONG', 'CB_TINH', 'CB_TW', 'ADMIN')) {

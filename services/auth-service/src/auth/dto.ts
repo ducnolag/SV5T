@@ -38,4 +38,8 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   don_vi_id?: string;
+
+  @IsOptional()
+  @IsString()
+  so_dien_thoai?: string;
 }

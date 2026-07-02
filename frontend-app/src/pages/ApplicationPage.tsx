@@ -1,36 +1,29 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, ChevronRight, CheckCircle, XCircle, Clock, ArrowRight } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowLeft, UploadCloud, FileText, Search, Filter, Sparkles, User, Calendar, ShieldCheck, Target, AlertTriangle } from 'lucide-react';
+import { useOutletContext } from 'react-router-dom';
 
 const FLOW_STEPS = [
-  { key: 'DANG_TAO', label: 'Đang tạo', color: '#94a3b8' },
-  { key: 'CHO_DUYET_TRUONG', label: 'Chờ Trường duyệt', color: '#f59e0b' },
-  { key: 'DAT_TRUONG', label: 'Đạt cấp Trường', color: '#10b981' },
-  { key: 'CHO_DUYET_TINH', label: 'Chờ Tỉnh duyệt', color: '#3b82f6' },
-  { key: 'DAT_TINH', label: 'Đạt cấp Tỉnh', color: '#6366f1' },
-  { key: 'CHO_DUYET_TW', label: 'Chờ TW duyệt', color: '#8b5cf6' },
-  { key: 'DAT_SV5T', label: '🏆 Đạt SV5T', color: '#f59e0b' },
+  { key: 'DANG_TAO', label: 'Thu thập Minh chứng', color: 'bg-slate-200 text-slate-500', active: 'bg-blue-600 text-white' },
+  { key: 'CHO_DUYET_TRUONG', label: 'Chờ cấp Trường', color: 'bg-slate-200 text-slate-500', active: 'bg-amber-500 text-white' },
+  { key: 'DAT_TRUONG', label: 'Đạt cấp Trường', color: 'bg-slate-200 text-slate-500', active: 'bg-emerald-500 text-white' },
+  { key: 'CHO_DUYET_TINH', label: 'Chờ cấp Tỉnh', color: 'bg-slate-200 text-slate-500', active: 'bg-blue-500 text-white' },
+  { key: 'DAT_TINH', label: 'Đạt cấp Tỉnh', color: 'bg-slate-200 text-slate-500', active: 'bg-indigo-500 text-white' },
+  { key: 'CHO_DUYET_TW', label: 'Chờ Trung ương', color: 'bg-slate-200 text-slate-500', active: 'bg-purple-500 text-white' },
+  { key: 'DAT_SV5T', label: 'Đạt SV5T', color: 'bg-slate-200 text-slate-500', active: 'bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)]' },
 ];
 
-const AI_FLAG: Record<string, { label: string; color: string }> = {
-  XANH: { label: '🟢 Cờ Xanh — Đủ điều kiện', color: 'bg-green-50 text-green-700 border-green-200' },
-  VANG: { label: '🟡 Cờ Vàng — Cần bổ sung', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-  DO: { label: '🔴 Cờ Đỏ — Thiếu minh chứng', color: 'bg-red-50 text-red-700 border-red-200' },
+const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+  DANG_TAO: { label: 'Đang chuẩn bị', cls: 'bg-slate-100 text-slate-700 border-slate-200' },
+  CHO_DUYET_TRUONG: { label: 'Chờ Trường', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  DAT_TRUONG: { label: 'Đạt Trường', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  CHO_DUYET_TINH: { label: 'Chờ Tỉnh', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+  DAT_TINH: { label: 'Đạt Tỉnh', cls: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  CHO_DUYET_TW: { label: 'Chờ TW', cls: 'bg-purple-50 text-purple-700 border-purple-200' },
+  DAT_SV5T: { label: '🏆 Đạt SV5T', cls: 'bg-amber-100 text-amber-800 border-amber-300 font-black' },
+  BI_TU_CHOI: { label: 'Bị từ chối', cls: 'bg-rose-50 text-rose-700 border-rose-200' },
 };
-
-const STATUS_ICON: Record<string, React.ReactNode> = {
-  DANG_TAO: <Clock size={15} className="text-slate-400" />,
-  CHO_DUYET_TRUONG: <Clock size={15} className="text-amber-500" />,
-  DAT_TRUONG: <CheckCircle size={15} className="text-green-500" />,
-  CHO_DUYET_TINH: <Clock size={15} className="text-blue-500" />,
-  DAT_TINH: <CheckCircle size={15} className="text-indigo-500" />,
-  CHO_DUYET_TW: <Clock size={15} className="text-purple-500" />,
-  DAT_SV5T: <CheckCircle size={15} className="text-amber-500" />,
-  BI_TU_CHOI: <XCircle size={15} className="text-red-500" />,
-};
-
-import { useOutletContext } from 'react-router-dom';
 
 export default function ApplicationPage() {
   const { isRole } = useAuth();
@@ -38,32 +31,34 @@ export default function ApplicationPage() {
   const [myApps, setMyApps] = useState<any[]>([]);
   const [pendingApps, setPendingApps] = useState<any[]>([]);
   const [quyChes, setQuyChes] = useState<any[]>([]);
-  const [proofs, setProofs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [selectedQuyche, setSelectedQuyche] = useState('');
-  const [selectedProofs, setSelectedProofs] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [reviewAction, setReviewAction] = useState<{ id: string; action: string } | null>(null);
-  const [selectedBatch, setSelectedBatch] = useState<string[]>([]);
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
+  const [appDetail, setAppDetail] = useState<any>(null);
   const [view, setView] = useState<'my' | 'pending'>('my');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [userProofs, setUserProofs] = useState<any[]>([]);
 
   const isStaff = isRole('CB_TRUONG', 'CB_TINH', 'CB_TW', 'ADMIN');
   const isSV = isRole('SINH_VIEN');
 
+  const [reviewAction, setReviewAction] = useState<{ id: string; action: string } | null>(null);
+
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [qcRes] = await Promise.all([api.get('/applications/quy-ches')]);
+      const qcRes = await api.get('/applications/quy-ches');
       setQuyChes(qcRes.data || []);
 
       if (isSV) {
-        const [myRes, proofsRes] = await Promise.all([
-          api.get('/applications/my'),
-          api.get('/proofs/me'),
-        ]);
-        setMyApps(myRes.data || []);
-        setProofs((proofsRes.data || []).filter((p: any) => p.trang_thai === 'DA_DUYET'));
+        const myRes = await api.get('/applications/my');
+        const apps = myRes.data || [];
+        setMyApps(apps);
+        const proofsRes = await api.get('/proofs/me');
+        setUserProofs(proofsRes.data || []);
+        if (apps.length === 1) {
+          setSelectedAppId(apps[0].id);
+        }
       }
       if (isStaff) {
         const pendingRes = await api.get('/applications/pending');
@@ -76,16 +71,46 @@ export default function ApplicationPage() {
     }
   };
 
+  const handleReview = async (id: string, trangThai: string) => {
+    setSubmitting(true);
+    try {
+      await api.put(`/applications/${id}/review`, { trang_thai: trangThai });
+      setReviewAction(null);
+      fetchAll();
+      if (selectedAppId === id) fetchDetail(id);
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Lỗi duyệt hồ sơ');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const fetchDetail = async (id: string) => {
+    try {
+      const res = await api.get(`/applications/${id}`);
+      setAppDetail(res.data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => { fetchAll(); }, []);
   useEffect(() => { if (refreshTrigger > 0) fetchAll(); }, [refreshTrigger]);
 
-  const handleCreate = async () => {
-    if (!selectedQuyche) { alert('Vui lòng chọn quy chế'); return; }
+  useEffect(() => {
+    if (selectedAppId) {
+      fetchDetail(selectedAppId);
+    } else {
+      setAppDetail(null);
+    }
+  }, [selectedAppId]);
+
+  const handleCreate = async (quyCheId: string) => {
     setSubmitting(true);
     try {
-      await api.post('/applications', { quy_che_id: selectedQuyche, minh_chung_ids: selectedProofs });
-      setShowCreate(false);
+      const res = await api.post('/applications', { quy_che_id: quyCheId, minh_chung_ids: [] });
       fetchAll();
+      setSelectedAppId(res.data.id);
     } catch (e: any) {
       alert(e.response?.data?.message || 'Lỗi tạo hồ sơ');
     } finally {
@@ -94,173 +119,385 @@ export default function ApplicationPage() {
   };
 
   const handleSubmit = async (id: string) => {
-    if (!confirm('Sau khi nộp, hồ sơ sẽ bị KHÓA và không thể chỉnh sửa. Bạn có chắc?')) return;
+    if (!confirm('Sau khi nộp, hồ sơ sẽ được gửi lên Cấp Trường để xét duyệt. Bạn có chắc chắn?')) return;
+    setSubmitting(true);
     try {
-      await api.put(`/applications/${id}/submit`);
+      // Lấy tất cả minh chứng hợp lệ (đã được AI xác nhận) của người dùng liên quan đến quy chế này
+      const validProofIds = userProofs.filter(p => appDetail.quy_che.tieu_chis.some((tc:any) => tc.id === p.tieu_chi_id) && (p.trang_thai === 'DA_XAC_THUC' || p.trang_thai === 'DA_DUYET' || (p.ai_xac_thuc_muc_do && p.ai_xac_thuc_muc_do >= 80))).map(p => p.id);
+      await api.put(`/applications/${id}/submit`, { minh_chung_ids: validProofIds });
+      setSelectedAppId(null);
       fetchAll();
+      alert('Nộp hồ sơ thành công!');
     } catch (e: any) {
       alert(e.response?.data?.message || 'Lỗi nộp hồ sơ');
-    }
-  };
-
-  const handleReview = async (id: string, trangThai: string) => {
-    setSubmitting(true);
-    try {
-      await api.put(`/applications/${id}/review`, { trang_thai: trangThai });
-      setReviewAction(null);
-      fetchAll();
-    } catch (e: any) {
-      alert(e.response?.data?.message || 'Lỗi duyệt hồ sơ');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleBatchEscalate = async () => {
-    if (selectedBatch.length === 0) { alert('Chọn ít nhất 1 hồ sơ'); return; }
-    if (!confirm(`Trình tuyến trên ${selectedBatch.length} hồ sơ đã chọn?`)) return;
-    setSubmitting(true);
-    try {
-      await api.post('/applications/batch-escalate', { appIds: selectedBatch });
-      setSelectedBatch([]);
-      fetchAll();
-    } catch (e: any) {
-      alert(e.response?.data?.message || 'Lỗi trình tuyến');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const filteredPending = pendingApps.filter(a => 
+    a.nguoi_dung?.ho_ten?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    a.nguoi_dung?.msv?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const stateIndex = (state: string) => FLOW_STEPS.findIndex(s => s.key === state);
+  // Logic tự động tìm quy chế đang mở mà SV chưa tham gia
+  const activeQuyChes = quyChes.filter(qc => {
+    // Nếu chưa có app nào với quy chế này, thì coi như "có thể tham gia"
+    return !myApps.some(app => app.quy_che?.id === qc.id);
+  });
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-start">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Hồ Sơ SV5T</h2>
-          <p className="text-slate-500 mt-1">Quản lý hồ sơ xét danh hiệu Sinh viên 5 Tốt</p>
-        </div>
-        <div className="flex gap-2">
-          {isSV && !myApps.length && (
-            <button onClick={() => setShowCreate(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-medium shadow-lg shadow-blue-500/30 hover:from-blue-700 hover:to-indigo-700 transition-all">
-              <Plus size={16} /> Tạo hồ sơ
-            </button>
-          )}
-          {isStaff && selectedBatch.length > 0 && (
-            <button onClick={handleBatchEscalate} disabled={submitting}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-all">
-              <ArrowRight size={16} /> Trình tuyến trên ({selectedBatch.length})
-            </button>
-          )}
-        </div>
-      </div>
+  // --- DETAIL VIEW ---
+  if (selectedAppId && appDetail) {
+    const isDraft = appDetail.trang_thai === 'DANG_TAO' && !appDetail.khoa;
+    let missingCount = 0;
+    
+    appDetail.quy_che?.tieu_chis?.forEach((tc: any) => {
+      const reqCount = tc.so_luong_yeu_cau || 1;
+      const validCount = isDraft 
+        ? userProofs.filter(p => p.tieu_chi_id === tc.id && (p.trang_thai === 'DA_XAC_THUC' || p.trang_thai === 'DA_DUYET' || (p.ai_xac_thuc_muc_do && p.ai_xac_thuc_muc_do >= 80))).length
+        : (appDetail.minh_chungs || []).filter((p: any) => p.tieu_chi_id === tc.id).length;
+      if (validCount < reqCount) missingCount += (reqCount - validCount);
+    });
 
-      {/* View toggle for staff */}
-      {isStaff && (
-        <div className="flex gap-2">
-          {[['my', 'Hồ sơ của tôi'], ['pending', `Chờ duyệt (${pendingApps.length})`]].map(([val, label]) => (
-            <button key={val} onClick={() => setView(val as any)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${view === val ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:border-blue-300'}`}>
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
+    const currentStepIndex = FLOW_STEPS.findIndex(s => s.key === appDetail.trang_thai) >= 0 
+      ? FLOW_STEPS.findIndex(s => s.key === appDetail.trang_thai) 
+      : 0;
 
-      {/* State Machine Visual */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 overflow-x-auto">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Luồng xét duyệt phân cấp</p>
-        <div className="flex items-center gap-1 min-w-max">
-          {FLOW_STEPS.map((step, i) => (
-            <div key={step.key} className="flex items-center gap-1">
-              <div className="flex flex-col items-center">
-                <div className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs font-bold"
-                  style={{ borderColor: step.color, color: step.color }}>
-                  {i + 1}
-                </div>
-                <p className="text-xs text-slate-500 mt-1 text-center max-w-[72px] leading-tight">{step.label}</p>
+    return (
+      <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+        <button onClick={() => setSelectedAppId(null)} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-medium transition-colors">
+          <ArrowLeft size={16} /> Quay lại Danh sách
+        </button>
+        
+        {/* Detail Header - Dashboard Style */}
+        <div className="relative overflow-hidden bg-white/70 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-xl shadow-slate-200/50 p-8">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border ${STATUS_BADGE[appDetail.trang_thai]?.cls}`}>
+                  {STATUS_BADGE[appDetail.trang_thai]?.label}
+                </span>
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border bg-indigo-50 text-indigo-700 border-indigo-200">
+                  <Target size={12} /> Tiến độ: {appDetail.quy_che?.tieu_chis?.length ? Math.round((Math.max(0, appDetail.quy_che.tieu_chis.length - missingCount) / appDetail.quy_che.tieu_chis.length) * 100) : 0}%
+                </span>
               </div>
-              {i < FLOW_STEPS.length - 1 && (
-                <ArrowRight size={12} className="text-slate-300 mb-5 flex-shrink-0" />
+              <h2 className="text-3xl font-black text-slate-800 tracking-tight">Dashboard Mục Tiêu SV5T</h2>
+              <div className="flex items-center gap-4 text-sm font-medium text-slate-500 mt-2">
+                <span className="flex items-center gap-1.5"><Calendar size={16} className="text-indigo-500" /> {appDetail.quy_che?.nam_hoc}</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                <span className="flex items-center gap-1.5"><User size={16} className="text-indigo-500" /> {appDetail.nguoi_dung?.ho_ten} ({appDetail.nguoi_dung?.msv})</span>
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              {isDraft && (
+                 <button onClick={() => handleSubmit(appDetail.id)} disabled={submitting || missingCount > 0}
+                  className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all hover:-translate-y-1 disabled:opacity-50 disabled:transform-none">
+                  {submitting ? 'Đang nộp...' : `Gửi Xét Duyệt ${missingCount > 0 ? `(Còn ${missingCount} mục)` : ''}`}
+                 </button>
+              )}
+              {isStaff && appDetail.trang_thai.startsWith('CHO') && (
+                <>
+                  <button onClick={() => handleReview(appDetail.id, 'BI_TU_CHOI')} disabled={submitting}
+                    className="px-6 py-4 bg-white border-2 border-rose-100 text-rose-600 hover:bg-rose-50 hover:border-rose-200 rounded-2xl font-bold transition-all shadow-sm">Từ chối</button>
+                  <button onClick={() => {
+                      const nextState = appDetail.trang_thai === 'CHO_DUYET_TRUONG' ? 'DAT_TRUONG' : appDetail.trang_thai === 'CHO_DUYET_TINH' ? 'DAT_TINH' : 'DAT_SV5T';
+                      handleReview(appDetail.id, nextState);
+                    }} disabled={submitting}
+                    className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-all hover:-translate-y-1">Xác nhận Đạt Chuẩn</button>
+                </>
               )}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* Create Modal */}
-      {showCreate && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-800">Tạo Hồ Sơ SV5T Mới</h3>
-              <button onClick={() => setShowCreate(false)} className="text-slate-400 hover:text-slate-600 text-xl">×</button>
-            </div>
-            <div className="p-6 space-y-5">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Chọn Quy chế xét danh hiệu *</label>
-                <div className="space-y-2">
-                  {quyChes.map(qc => (
-                    <button key={qc.id} onClick={() => setSelectedQuyche(qc.id)}
-                      className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${selectedQuyche === qc.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-300'}`}>
-                      <p className="font-medium text-slate-800 text-sm">{qc.don_vi?.ten_don_vi} — Năm học {qc.nam_hoc}</p>
-                      <div className="flex gap-2 mt-1 flex-wrap">
-                        {(qc.tieu_chis || []).map((t: any) => (
-                          <span key={t.id} className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">{t.ten_tieu_chi}</span>
-                        ))}
-                      </div>
-                      <p className="text-xs text-slate-400 mt-1">Hạn nộp: {new Date(qc.ngay_dong_cong).toLocaleDateString('vi-VN')}</p>
-                    </button>
-                  ))}
-                  {!quyChes.length && <p className="text-slate-400 text-sm text-center py-4">Chưa có quy chế nào được cấu hình</p>}
-                </div>
+          {/* Premium Timeline Stepper */}
+          <div className="mt-8 mb-4 relative z-10 px-4 hidden sm:block">
+            <div className="flex items-center justify-between relative">
+              <div className="absolute top-1/2 left-0 right-0 h-1.5 bg-slate-100 -z-10 -translate-y-1/2 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-1000 ease-in-out" style={{ width: `${(currentStepIndex / (FLOW_STEPS.length - 1)) * 100}%` }}></div>
               </div>
+              {FLOW_STEPS.map((step, idx) => {
+                const isCompleted = idx <= currentStepIndex;
+                const isCurrent = idx === currentStepIndex;
+                return (
+                  <div key={step.key} className="flex flex-col items-center gap-2 relative group">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-500 ${isCompleted ? step.active : step.color} ${isCurrent ? 'ring-4 ring-indigo-500/20 scale-125' : ''}`}>
+                      {isCompleted ? <CheckCircle size={16} /> : (idx + 1)}
+                    </div>
+                    <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider absolute -bottom-6 w-max text-center transition-colors ${isCurrent ? 'text-indigo-600' : isCompleted ? 'text-slate-700' : 'text-slate-400'}`}>
+                      {step.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
-              {proofs.length > 0 && (
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Gắn Minh chứng đã duyệt ({selectedProofs.length} đã chọn)</label>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {proofs.map(p => (
-                      <label key={p.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedProofs.includes(p.id) ? 'border-green-400 bg-green-50' : 'border-slate-200 hover:border-green-300'}`}>
-                        <input type="checkbox" checked={selectedProofs.includes(p.id)}
-                          onChange={e => setSelectedProofs(prev => e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id))}
-                          className="rounded" />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-700 truncate">{p.file_url?.split('/').pop()}</p>
-                          {p.tieu_chi && <p className="text-xs text-slate-400">{p.tieu_chi.ten_tieu_chi}</p>}
+        {/* Cảnh báo Hồ sơ chưa đủ */}
+        {isDraft && missingCount > 0 && (
+           <div className="bg-amber-50 border border-amber-200 rounded-[2rem] p-5 flex items-center gap-4">
+             <div className="p-3 bg-white rounded-full text-amber-500 shadow-sm"><AlertTriangle size={24} /></div>
+             <div>
+               <h4 className="font-bold text-amber-900">Mục tiêu chưa hoàn thành</h4>
+               <p className="text-sm font-medium text-amber-700">Bạn còn thiếu {missingCount} tiêu chí cần bổ sung minh chứng. Hãy cập nhật đầy đủ để đủ điều kiện xét duyệt.</p>
+             </div>
+           </div>
+        )}
+
+        {/* Criteria List Grid */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-black text-slate-800">Tiến Độ Theo 5 Tiêu Chí</h3>
+          </div>
+          
+          <div className="grid gap-5">
+            {(appDetail.quy_che?.tieu_chis || []).map((tc: any) => {
+              const reqCount = tc.so_luong_yeu_cau || 1;
+              const tcProofs = isDraft
+                ? userProofs.filter(p => p.tieu_chi_id === tc.id && (p.trang_thai === 'DA_XAC_THUC' || p.trang_thai === 'DA_DUYET' || (p.ai_xac_thuc_muc_do && p.ai_xac_thuc_muc_do >= 80)))
+                : (appDetail.minh_chungs || []).filter((p: any) => p.tieu_chi_id === tc.id);
+              
+              const isCompleted = tcProofs.length >= reqCount;
+
+              return (
+                <div key={tc.id} className={`p-6 rounded-[2rem] border-2 transition-all duration-300 ${isCompleted ? 'border-emerald-100 bg-white shadow-lg shadow-emerald-500/5 hover:border-emerald-200' : 'border-slate-100 bg-white/50 hover:bg-white hover:border-indigo-100 hover:shadow-md'}`}>
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-lg ${isCompleted ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
+                          {isCompleted ? <CheckCircle size={20} /> : <Target size={20} />}
                         </div>
-                        <CheckCircle size={15} className={selectedProofs.includes(p.id) ? 'text-green-500 flex-shrink-0' : 'text-slate-200 flex-shrink-0'} />
-                      </label>
-                    ))}
+                        <h4 className={`text-lg font-black ${isCompleted ? 'text-emerald-900' : 'text-slate-800'}`}>
+                          {tc.ten_tieu_chi}
+                        </h4>
+                        {isCompleted && <span className="text-[10px] font-black uppercase bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full ml-2">Đã hoàn thành</span>}
+                      </div>
+                      <div className="pl-13 ml-13">
+                        <p className="text-sm text-slate-500 mb-3 font-medium">{tc.mo_ta}</p>
+                        <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 inline-block">
+                          <p className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1.5"><ShieldCheck size={14} className="text-indigo-500"/> Điều kiện: cần {reqCount} minh chứng</p>
+                        </div>
+                        
+                        <div className="mt-4 flex items-center gap-3">
+                          <span className={`text-sm font-bold ${isCompleted ? 'text-emerald-600' : 'text-slate-500'}`}>Tiến độ: {tcProofs.length}/{reqCount}</span>
+                          <div className="w-32 h-2.5 bg-slate-200 rounded-full overflow-hidden shadow-inner">
+                            <div className={`h-full ${isCompleted ? 'bg-emerald-500' : 'bg-indigo-500'} transition-all duration-700`} style={{ width: `${Math.min(100, (tcProofs.length/reqCount)*100)}%` }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="w-full md:w-64 flex-shrink-0">
+                      {tcProofs.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2 h-full">
+                          {tcProofs.slice(0, 2).map((proof: any) => (
+                            <div key={proof.id} className="bg-emerald-50 border border-emerald-100 rounded-xl p-1 relative group overflow-hidden h-32 flex flex-col justify-center">
+                              <div className="w-full h-full rounded-lg overflow-hidden relative bg-white border border-emerald-100/50">
+                                <img src={proof.file_url?.startsWith('http') ? proof.file_url : `http://localhost:3000${proof.file_url?.startsWith('/') ? '' : '/'}${proof.file_url}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Minh chứng" />
+                                <div className="absolute inset-0 bg-emerald-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-300 backdrop-blur-sm">
+                                  <a href={proof.file_url?.startsWith('http') ? proof.file_url : `http://localhost:3000${proof.file_url?.startsWith('/') ? '' : '/'}${proof.file_url}`} target="_blank" className="px-3 py-1.5 bg-white text-emerald-900 font-bold text-xs rounded-lg shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">Xem</a>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : isDraft ? (
+                        <a href="/proofs" className="h-full min-h-[140px] w-full border-2 border-dashed border-slate-300 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/50 rounded-2xl flex flex-col items-center justify-center text-slate-500 hover:text-indigo-600 transition-all group">
+                          <div className="w-12 h-12 bg-white group-hover:bg-indigo-100 rounded-full flex items-center justify-center mb-2 transition-colors shadow-sm">
+                            <UploadCloud size={20} className="group-hover:scale-110 transition-transform" />
+                          </div>
+                          <span className="text-sm font-bold">Mở Kho Minh Chứng</span>
+                          <span className="text-xs text-slate-400 mt-1">Để tự động lấy tài liệu</span>
+                        </a>
+                      ) : (
+                        <div className="h-full min-h-[140px] w-full flex flex-col items-center justify-center bg-slate-50 border border-slate-100 rounded-2xl text-slate-400">
+                           <FileText size={32} className="mb-2 opacity-50" />
+                           <span className="text-sm font-semibold">Chưa có dữ liệu</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              )}
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setShowCreate(false)}
-                  className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm hover:bg-slate-50">Hủy</button>
-                <button onClick={handleCreate} disabled={submitting || !selectedQuyche}
-                  className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50">
-                  {submitting ? 'Đang tạo...' : 'Tạo hồ sơ'}
-                </button>
+  // --- LIST VIEW ---
+  return (
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+      {/* Dynamic Banner for active Applications (Only for Student) */}
+      {isSV && activeQuyChes.length > 0 && (
+        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-blue-700 rounded-[2rem] p-8 md:p-10 text-white shadow-xl shadow-indigo-500/20 group">
+          <div className="absolute right-0 top-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 group-hover:opacity-10 transition-opacity"></div>
+          <div className="relative z-10 md:flex items-center justify-between">
+            <div className="mb-6 md:mb-0 max-w-xl">
+              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4 border border-white/30">
+                <Sparkles size={14} /> Đợt xét duyệt đang mở
               </div>
+              <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-3">Hành Trình Chinh Phục Danh Hiệu</h2>
+              <p className="text-indigo-100 font-medium leading-relaxed">Năm học {activeQuyChes[0]?.nam_hoc} đã chính thức khởi động. Bắt đầu thu thập minh chứng và hoàn thiện Dashboard tiêu chí của bạn ngay hôm nay!</p>
             </div>
+            <button onClick={() => handleCreate(activeQuyChes[0].id)} disabled={submitting}
+              className="px-8 py-4 bg-white text-indigo-700 rounded-2xl font-black text-lg shadow-xl shadow-black/10 hover:shadow-2xl hover:scale-105 hover:bg-slate-50 transition-all">
+              {submitting ? 'Đang tạo...' : 'Khởi tạo Hồ sơ'}
+            </button>
           </div>
         </div>
       )}
 
-      {/* Review Modal */}
+      {/* Header Area */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mt-4">
+        <div>
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Quản lý Hồ Sơ</h2>
+          <p className="text-slate-500 font-medium mt-1">Theo dõi tiến độ hoàn thành các tiêu chí xét duyệt</p>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-3">
+          {isStaff && (
+            <div className="bg-slate-100 p-1 rounded-xl flex">
+              {[['my', 'Hồ sơ của tôi'], ['pending', `Cần xét duyệt (${pendingApps.length})`]].map(([val, label]) => (
+                <button key={val} onClick={() => setView(val as any)}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${view === val ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-20"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>
+      ) : view === 'pending' && isStaff ? (
+        /* ENTERPRISE DATA TABLE FOR STAFF */
+        <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/40 overflow-hidden">
+          <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between gap-4">
+            <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2"><Filter size={20} className="text-indigo-500"/> Danh sách chờ duyệt</h3>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input type="text" placeholder="Tìm tên hoặc MSV..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 w-full sm:w-64 font-medium transition-all" />
+            </div>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[800px]">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-black text-slate-500 uppercase tracking-wider">
+                  <th className="py-4 px-6 whitespace-nowrap">Sinh viên</th>
+                  <th className="py-4 px-6 whitespace-nowrap">Tiến độ tiêu chí</th>
+                  <th className="py-4 px-6 whitespace-nowrap">Trạng thái hiện tại</th>
+                  <th className="py-4 px-6 text-right whitespace-nowrap">Hành động</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredPending.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-16 text-center text-slate-500 font-medium">Không tìm thấy hồ sơ nào chờ duyệt.</td>
+                  </tr>
+                ) : (
+                  filteredPending.map(app => (
+                    <tr key={app.id} className="hover:bg-indigo-50/30 transition-colors group">
+                      <td className="py-4 px-6">
+                        <p className="font-bold text-slate-800 text-sm">{app.nguoi_dung?.ho_ten}</p>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">{app.nguoi_dung?.msv} • {app.quy_che?.nam_hoc}</p>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-bold text-slate-700">{app.minh_chungs?.length || 0}/5</span>
+                          <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${((app.minh_chungs?.length || 0)/5)*100}%` }}></div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold border ${STATUS_BADGE[app.trang_thai]?.cls}`}>
+                          {STATUS_BADGE[app.trang_thai]?.label}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-right">
+                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setReviewAction({ id: app.id, action: 'REJECT' })} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors tooltip" title="Từ chối"><XCircle size={18} /></button>
+                          <button onClick={() => setReviewAction({ id: app.id, action: 'APPROVE' })} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors tooltip" title="Duyệt"><CheckCircle size={18} /></button>
+                          <button onClick={() => setSelectedAppId(app.id)} className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg transition-colors">Xem Dashboard</button>
+                        </div>
+                        <div className="group-hover:hidden text-xs text-slate-400 font-medium">Trượt để thao tác</div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* PREMIUM CARDS FOR STUDENT VIEW */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {myApps.length === 0 ? (
+            <div className="col-span-full text-center py-16 bg-white border border-slate-200 border-dashed rounded-[2rem] shadow-sm">
+              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Target size={32} className="text-slate-300" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800 mb-2">Chưa có mục tiêu</h3>
+              <p className="text-slate-500 font-medium max-w-md mx-auto">Bạn chưa tham gia đợt xét duyệt nào. Hãy theo dõi thông báo từ Hội Sinh viên để khởi tạo hồ sơ.</p>
+            </div>
+          ) : (
+            myApps.map(app => (
+              <div key={app.id} onClick={() => setSelectedAppId(app.id)} 
+                className="group cursor-pointer bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-200 transition-all duration-300 p-6 flex flex-col h-full relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 -z-0"></div>
+                
+                <div className="relative z-10 flex-1">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${STATUS_BADGE[app.trang_thai]?.cls}`}>
+                      {STATUS_BADGE[app.trang_thai]?.label}
+                    </span>
+                  </div>
+                  <h3 className="font-black text-xl text-slate-800 leading-snug mb-1 group-hover:text-indigo-600 transition-colors">
+                    Dashboard Năm {app.quy_che?.nam_hoc}
+                  </h3>
+                  <p className="text-sm text-slate-500 font-medium">{app.quy_che?.don_vi?.ten_don_vi}</p>
+                </div>
+                
+                <div className="relative z-10 mt-8 pt-5 border-t border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2 w-full">
+                    <div className="flex-1">
+                      <div className="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
+                        <span>Tiến độ</span>
+                        <span className="text-indigo-600">{app.minh_chungs?.length || 0}/5</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-indigo-500 rounded-full transition-all duration-500" style={{ width: `${((app.minh_chungs?.length || 0)/5)*100}%` }}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Review Confirmation Modal */}
       {reviewAction && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6">
-            <h3 className="font-bold text-slate-800 mb-4">
-              {reviewAction.action === 'APPROVE' ? '✅ Xác nhận duyệt hồ sơ' : '❌ Từ chối hồ sơ'}
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${reviewAction.action === 'APPROVE' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+              {reviewAction.action === 'APPROVE' ? <ShieldCheck size={32} /> : <XCircle size={32} />}
+            </div>
+            <h3 className="text-xl font-black text-slate-800 mb-2">
+              {reviewAction.action === 'APPROVE' ? 'Phê duyệt hồ sơ?' : 'Từ chối hồ sơ?'}
             </h3>
-            <p className="text-sm text-slate-500 mb-5">Quyết định này <strong>không thể hoàn tác</strong>. Bạn có chắc chắn?</p>
+            <p className="text-sm text-slate-500 font-medium mb-8">Quyết định này sẽ cập nhật trạng thái hồ sơ trực tiếp. Bạn có chắc chắn?</p>
             <div className="flex gap-3">
-              <button onClick={() => setReviewAction(null)}
-                className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm">Hủy</button>
+              <button onClick={() => setReviewAction(null)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors">Hủy thao tác</button>
               <button disabled={submitting}
                 onClick={() => {
                   const nextState = reviewAction.action === 'APPROVE'
@@ -270,142 +507,11 @@ export default function ApplicationPage() {
                     : 'BI_TU_CHOI';
                   handleReview(reviewAction.id, nextState);
                 }}
-                className={`flex-1 py-2.5 text-white rounded-xl text-sm font-medium disabled:opacity-50 ${reviewAction.action === 'APPROVE' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-500 hover:bg-red-600'}`}>
-                {submitting ? 'Đang xử lý...' : reviewAction.action === 'APPROVE' ? 'Xác nhận duyệt' : 'Từ chối'}
+                className={`flex-1 py-3 text-white rounded-xl text-sm font-bold disabled:opacity-50 transition-all ${reviewAction.action === 'APPROVE' ? 'bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30' : 'bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/30'}`}>
+                {submitting ? 'Đang xử lý...' : 'Xác nhận'}
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Content */}
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {/* SINH VIEN: My applications */}
-          {isSV && (myApps.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="text-6xl mb-4">📋</div>
-              <p className="text-slate-600 font-medium text-lg">Bạn chưa có hồ sơ SV5T</p>
-              <p className="text-slate-400 text-sm mt-1">Hãy tích lũy minh chứng và tạo hồ sơ để tham gia xét danh hiệu</p>
-              <button onClick={() => setShowCreate(true)}
-                className="mt-5 px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all">
-                Tạo hồ sơ ngay
-              </button>
-            </div>
-          ) : (
-            myApps.map(app => {
-              const si = stateIndex(app.trang_thai);
-              return (
-                <div key={app.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        {STATUS_ICON[app.trang_thai]}
-                        <h3 className="font-semibold text-slate-800">
-                          {app.quy_che?.don_vi?.ten_don_vi} — {app.quy_che?.nam_hoc}
-                        </h3>
-                      </div>
-                      {app.ai_flag && (
-                        <span className={`inline-block text-xs mt-2 px-3 py-1 rounded-xl border font-medium ${AI_FLAG[app.ai_flag]?.color}`}>
-                          {AI_FLAG[app.ai_flag]?.label}
-                        </span>
-                      )}
-                    </div>
-                    {app.trang_thai === 'DANG_TAO' && !app.khoa && (
-                      <button onClick={() => handleSubmit(app.id)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 flex items-center gap-1">
-                        Nộp hồ sơ <ChevronRight size={14} />
-                      </button>
-                    )}
-                    {app.khoa && <span className="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-lg">🔒 Đã khóa</span>}
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="flex items-center gap-1 flex-wrap">
-                    {FLOW_STEPS.map((step, i) => (
-                      <div key={step.key} className="flex items-center gap-1">
-                        <div className={`h-1.5 rounded-full transition-all ${i <= si ? 'w-8' : 'w-6 opacity-30'}`}
-                          style={{ backgroundColor: i <= si ? step.color : '#e2e8f0' }} />
-                      </div>
-                    ))}
-                    <span className="text-xs text-slate-500 ml-1">{FLOW_STEPS[si]?.label}</span>
-                  </div>
-
-                  {app.ghi_chu_ai && (
-                    <p className="text-xs text-slate-500 mt-3 bg-slate-50 px-3 py-2 rounded-lg">💡 {app.ghi_chu_ai}</p>
-                  )}
-
-                  <div className="mt-3 text-xs text-slate-400">
-                    {app.minh_chungs?.length || 0} minh chứng đính kèm
-                    {app.ngay_nop && <span className="ml-2">· Ngày nộp: {new Date(app.ngay_nop).toLocaleDateString('vi-VN')}</span>}
-                  </div>
-                </div>
-              );
-            })
-          ))}
-
-          {/* STAFF: Pending applications */}
-          {isStaff && view === 'pending' && (pendingApps.length === 0 ? (
-            <div className="text-center py-12">
-              <CheckCircle size={40} className="text-green-400 mx-auto mb-3" />
-              <p className="text-slate-500">Không có hồ sơ nào chờ duyệt</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {/* Batch select bar */}
-              <div className="flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3">
-                <label className="flex items-center gap-2 text-sm text-indigo-700 cursor-pointer">
-                  <input type="checkbox"
-                    checked={selectedBatch.length === pendingApps.filter(a => a.trang_thai.startsWith('DAT')).length && selectedBatch.length > 0}
-                    onChange={e => setSelectedBatch(e.target.checked ? pendingApps.filter(a => a.trang_thai.startsWith('DAT')).map((a: any) => a.id) : [])}
-                    className="rounded" />
-                  Chọn tất cả hồ sơ đã duyệt để trình tuyến trên
-                </label>
-                <span className="text-xs text-indigo-500 font-medium">Đã chọn: {selectedBatch.length}</span>
-              </div>
-
-              {pendingApps.map(app => {
-                const canSelect = app.trang_thai.startsWith('DAT');
-                return (
-                  <div key={app.id} className={`bg-white rounded-2xl border shadow-sm p-5 ${selectedBatch.includes(app.id) ? 'border-indigo-300' : 'border-slate-100'}`}>
-                    <div className="flex items-start gap-3">
-                      {canSelect && (
-                        <input type="checkbox" checked={selectedBatch.includes(app.id)}
-                          onChange={e => setSelectedBatch(prev => e.target.checked ? [...prev, app.id] : prev.filter(id => id !== app.id))}
-                          className="mt-1 rounded" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          {STATUS_ICON[app.trang_thai]}
-                          <p className="font-semibold text-slate-800">{app.nguoi_dung?.ho_ten}</p>
-                          <span className="text-xs text-slate-400">{app.nguoi_dung?.msv}</span>
-                          {app.ai_flag && (
-                            <span className={`text-xs px-2 py-0.5 rounded-full border ${AI_FLAG[app.ai_flag]?.color}`}>
-                              {app.ai_flag === 'XANH' ? '🟢' : app.ai_flag === 'VANG' ? '🟡' : '🔴'} {app.ai_flag}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500">{app.quy_che?.don_vi?.ten_don_vi} — {app.quy_che?.nam_hoc}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{app.minh_chungs?.length || 0} minh chứng · Nộp: {app.ngay_nop ? new Date(app.ngay_nop).toLocaleDateString('vi-VN') : '—'}</p>
-                      </div>
-                      {app.trang_thai.startsWith('CHO') && (
-                        <div className="flex gap-2">
-                          <button onClick={() => setReviewAction({ id: app.id, action: 'APPROVE' })}
-                            className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-xl hover:bg-green-100 text-xs font-medium">✅ Duyệt</button>
-                          <button onClick={() => setReviewAction({ id: app.id, action: 'REJECT' })}
-                            className="px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-xl hover:bg-red-100 text-xs font-medium">❌ Từ chối</button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
         </div>
       )}
     </div>

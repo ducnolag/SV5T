@@ -42,7 +42,10 @@ let AuthController = class AuthController {
         return this.authService.resetPassword(body.email, body.otp, body.new_password);
     }
     getProfile(req) {
-        return req.user;
+        return this.authService.getProfile(req.user.id);
+    }
+    updateProfile(req, body) {
+        return this.authService.updateProfile(req.user.id, body);
     }
 };
 exports.AuthController = AuthController;
@@ -97,6 +100,15 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "getProfile", null);
+__decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
+    (0, common_1.Post)('me'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "updateProfile", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService])
