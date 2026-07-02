@@ -25,5 +25,27 @@ export declare class AuthController {
             ngay_sinh: any;
         };
     }>;
+    forgotPassword(body: {
+        email: string;
+    }): Promise<{
+        success: boolean;
+        message: string;
+        devOtp: string | undefined;
+    }>;
+    verifyOtp(body: {
+        email: string;
+        otp: string;
+    }): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    resetPassword(body: {
+        email: string;
+        otp: string;
+        new_password: string;
+    }): Promise<{
+        success: boolean;
+        message: string;
+    }>;
     getProfile(req: any): any;
 }

@@ -21,6 +21,19 @@ export declare class AuthService {
         message: string;
         userId: string;
     }>;
+    forgotPassword(email: string): Promise<{
+        success: boolean;
+        message: string;
+        devOtp: string | undefined;
+    }>;
+    verifyOtp(email: string, otp: string): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    resetPassword(email: string, otp: string, new_password: string): Promise<{
+        success: boolean;
+        message: string;
+    }>;
     verifyEkycReal(files: Express.Multer.File[]): Promise<{
         success: boolean;
         data: {

@@ -24,6 +24,21 @@ export class AuthController {
     return this.authService.verifyEkycReal(files);
   }
 
+  @Post('forgot-password')
+  forgotPassword(@Body() body: { email: string }) {
+    return this.authService.forgotPassword(body.email);
+  }
+
+  @Post('verify-otp')
+  verifyOtp(@Body() body: { email: string; otp: string }) {
+    return this.authService.verifyOtp(body.email, body.otp);
+  }
+
+  @Post('reset-password')
+  resetPassword(@Body() body: { email: string; otp: string; new_password: string }) {
+    return this.authService.resetPassword(body.email, body.otp, body.new_password);
+  }
+
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
   getProfile(@Request() req: any) {

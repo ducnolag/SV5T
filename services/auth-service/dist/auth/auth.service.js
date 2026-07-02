@@ -47,6 +47,7 @@ const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const jwt_1 = require("@nestjs/jwt");
 const bcrypt = __importStar(require("bcrypt"));
+const nodemailer = __importStar(require("nodemailer"));
 const audit_service_1 = require("../audit/audit.service");
 const shared_database_1 = require("shared-database");
 let AuthService = class AuthService {
@@ -101,6 +102,24 @@ let AuthService = class AuthService {
         }
         const hashedPassword = await bcrypt.hash(dto.mat_khau, 10);
         const encryptedCccd = `ENCRYPTED_${dto.cccd}`;
+        let actualDonViId = undefined;
+        if (dto.don_vi_id) {
+            const existingDonVi = await this.prisma.donVi.findFirst({
+                where: { ten_don_vi: dto.don_vi_id, cap_do: 'TRUONG' }
+            });
+            if (existingDonVi) {
+                actualDonViId = existingDonVi.id;
+            }
+            else {
+                const newDonVi = await this.prisma.donVi.create({
+                    data: {
+                        ten_don_vi: dto.don_vi_id,
+                        cap_do: 'TRUONG',
+                    }
+                });
+                actualDonViId = newDonVi.id;
+            }
+        }
         const newUser = await this.prisma.nguoiDung.create({
             data: {
                 email: dto.email,
@@ -109,10 +128,87 @@ let AuthService = class AuthService {
                 msv: dto.msv,
                 cccd: encryptedCccd,
                 vai_tro: dto.vai_tro || shared_database_1.VaiTro.SINH_VIEN,
+                don_vi_id: actualDonViId,
             },
         });
         await this.auditService.logAction(newUser.id, 'REGISTER', 'USER', newUser.id, null, { email: dto.email });
         return { message: 'Đăng ký thành công', userId: newUser.id };
+    }
+    async forgotPassword(email) {
+        const user = await this.prisma.nguoiDung.findUnique({ where: { email } });
+        if (!user) {
+            throw new common_1.BadRequestException('Email không tồn tại trong hệ thống');
+        }
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expires = new Date(Date.now() + 5 * 60 * 1000);
+        await this.prisma.nguoiDung.update({
+            where: { id: user.id },
+            data: { reset_otp: otp, reset_otp_expires: expires },
+        });
+        const smtpUser = process.env.SMTP_USER;
+        const smtpPass = process.env.SMTP_PASS;
+        if (smtpUser && smtpPass) {
+            const transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: smtpUser,
+                    pass: smtpPass,
+                },
+            });
+            try {
+                await transporter.sendMail({
+                    from: `"Hệ thống SV5T" <${smtpUser}>`,
+                    to: email,
+                    subject: "Mã xác thực khôi phục mật khẩu SV5T",
+                    html: `<b>Mã OTP của bạn là: <span style="color:blue;font-size:24px">${otp}</span></b><br/>Mã này sẽ hết hạn trong vòng 5 phút.`,
+                });
+            }
+            catch (err) {
+                console.error("Lỗi khi gửi mail thật:", err);
+                throw new common_1.BadRequestException('Không thể gửi email. Vui lòng kiểm tra lại cấu hình SMTP.');
+            }
+        }
+        else {
+            console.log("\n=======================================================");
+            console.log(`HỆ THỐNG GỬI EMAIL (MÔ PHỎNG VÌ CHƯA CÓ CẤU HÌNH SMTP)`);
+            console.log(`Đến: ${email}`);
+            console.log(`Tiêu đề: Mã xác thực khôi phục mật khẩu SV5T`);
+            console.log(`Nội dung: MÃ OTP CỦA BẠN LÀ: [ ${otp} ]`);
+            console.log(`=======================================================\n`);
+        }
+        await this.auditService.logAction(user.id, 'FORGOT_PASSWORD_REQ', 'USER', user.id, null, { email });
+        return {
+            success: true,
+            message: 'Mã OTP đã được gửi đến email của bạn.',
+            devOtp: (!smtpUser || !smtpPass) ? otp : undefined
+        };
+    }
+    async verifyOtp(email, otp) {
+        const user = await this.prisma.nguoiDung.findUnique({ where: { email } });
+        if (!user || user.reset_otp !== otp || !user.reset_otp_expires) {
+            throw new common_1.BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
+        }
+        if (new Date() > user.reset_otp_expires) {
+            throw new common_1.BadRequestException('Mã OTP đã hết hạn');
+        }
+        return { success: true, message: 'Xác thực OTP thành công' };
+    }
+    async resetPassword(email, otp, new_password) {
+        const user = await this.prisma.nguoiDung.findUnique({ where: { email } });
+        if (!user || user.reset_otp !== otp || !user.reset_otp_expires || new Date() > user.reset_otp_expires) {
+            throw new common_1.BadRequestException('Lỗi xác thực, vui lòng gửi lại yêu cầu quên mật khẩu');
+        }
+        const hashedPassword = await bcrypt.hash(new_password, 10);
+        await this.prisma.nguoiDung.update({
+            where: { id: user.id },
+            data: {
+                mat_khau: hashedPassword,
+                reset_otp: null,
+                reset_otp_expires: null
+            },
+        });
+        await this.auditService.logAction(user.id, 'RESET_PASSWORD', 'USER', user.id, null, { email });
+        return { success: true, message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.' };
     }
     async verifyEkycReal(files) {
         if (!files || files.length < 3) {

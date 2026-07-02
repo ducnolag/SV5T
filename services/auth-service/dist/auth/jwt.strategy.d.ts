@@ -13,9 +13,11 @@ export declare class JwtStrategy extends JwtStrategy_base {
         msv: string | null;
         cccd: string | null;
         vai_tro: import("shared-database").$Enums.VaiTro;
-        id: string;
         don_vi_id: string | null;
+        id: string;
         trang_thai: import("shared-database").$Enums.TrangThaiTK;
+        reset_otp: string | null;
+        reset_otp_expires: Date | null;
         created_at: Date;
     }>;
 }

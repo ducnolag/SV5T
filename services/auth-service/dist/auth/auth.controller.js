@@ -32,6 +32,15 @@ let AuthController = class AuthController {
     async ekycReal(files) {
         return this.authService.verifyEkycReal(files);
     }
+    forgotPassword(body) {
+        return this.authService.forgotPassword(body.email);
+    }
+    verifyOtp(body) {
+        return this.authService.verifyOtp(body.email, body.otp);
+    }
+    resetPassword(body) {
+        return this.authService.resetPassword(body.email, body.otp, body.new_password);
+    }
     getProfile(req) {
         return req.user;
     }
@@ -59,6 +68,27 @@ __decorate([
     __metadata("design:paramtypes", [Array]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "ekycReal", null);
+__decorate([
+    (0, common_1.Post)('forgot-password'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "forgotPassword", null);
+__decorate([
+    (0, common_1.Post)('verify-otp'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "verifyOtp", null);
+__decorate([
+    (0, common_1.Post)('reset-password'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "resetPassword", null);
 __decorate([
     (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
     (0, common_1.Get)('me'),

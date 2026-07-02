@@ -34,4 +34,8 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   vai_tro?: VaiTro;
+
+  @IsOptional()
+  @IsString()
+  don_vi_id?: string;
 }

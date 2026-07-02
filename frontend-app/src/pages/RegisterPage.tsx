@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { ChevronRight, CheckCircle2, User, Mail, Lock, Building, Users, UploadCloud, Camera } from 'lucide-react';
+import { ChevronRight, CheckCircle2, User, Mail, Lock, Building, UploadCloud, Camera } from 'lucide-react';
+import Select from 'react-select';
 
 interface DonVi {
   id: string;
@@ -30,7 +31,15 @@ export default function RegisterPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.get('/units').then(r => setUnits(r.data || [])).catch(() => {});
+    fetch('/vietnam_universities.json')
+      .then(res => res.json())
+      .then((data: string[]) => {
+        const vnUnis = data.map(name => ({ id: name, ten_don_vi: name, cap_do: 'TRUONG' }));
+        setUnits(vnUnis);
+      })
+      .catch(() => {
+        setUnits([{ id: 'DHQGHN', ten_don_vi: 'Đại học Quốc gia Hà Nội', cap_do: 'TRUONG' }]);
+      });
   }, []);
 
   const handleFileChange = (field: keyof typeof files, file: File | null) => {
@@ -85,13 +94,6 @@ export default function RegisterPage() {
     }
   };
 
-  const ROLES = [
-    { value: 'SINH_VIEN', label: 'Sinh viên' },
-    { value: 'LCH_CLB', label: 'Liên Chi Hội / CLB' },
-    { value: 'CB_TRUONG', label: 'Cán bộ Trường' },
-    { value: 'CB_TINH', label: 'Cán bộ Tỉnh' },
-    { value: 'CB_TW', label: 'Cán bộ TW' },
-  ];
 
   const FileUploader = ({ field, label, accept = "image/*" }: { field: keyof typeof files, label: string, accept?: string }) => {
     const file = files[field];
@@ -224,35 +226,56 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-slate-700">Vai trò</label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-slate-900"><Users size={18} /></div>
-                    <select required value={formData.vai_tro} onChange={e => setFormData({ ...formData, vai_tro: e.target.value })}
-                      className="w-full pl-11 pr-8 py-3 bg-slate-50 border border-slate-200 text-slate-900 rounded-xl focus:outline-none focus:border-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/10 transition-all font-medium appearance-none">
-                      {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                    </select>
-                  </div>
-                </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-slate-700">Mã (MSV/MCB)</label>
+                  <label className="text-sm font-bold text-slate-700">Mã Sinh Viên</label>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-slate-900"><CheckCircle2 size={18} /></div>
-                    <input type="text" required placeholder="Nhập mã số" value={formData.msv} onChange={e => setFormData({ ...formData, msv: e.target.value })}
+                    <input type="text" required placeholder="Nhập mã sinh viên" value={formData.msv} onChange={e => setFormData({ ...formData, msv: e.target.value })}
                       className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 text-slate-900 rounded-xl focus:outline-none focus:border-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/10 transition-all font-medium" />
                   </div>
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-2">
                   <label className="text-sm font-bold text-slate-700">Đơn vị trực thuộc</label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-slate-900"><Building size={18} /></div>
-                    <select required value={formData.don_vi_id} onChange={e => setFormData({ ...formData, don_vi_id: e.target.value })}
-                      className="w-full pl-11 pr-8 py-3 bg-slate-50 border border-slate-200 text-slate-900 rounded-xl focus:outline-none focus:border-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/10 transition-all font-medium appearance-none">
-                      <option value="">-- Chọn đơn vị --</option>
-                      {units.map(u => <option key={u.id} value={u.id}>{u.ten_don_vi}</option>)}
-                    </select>
+                  <div className="relative group z-50">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 z-10">
+                      <Building size={18} />
+                    </div>
+                    <Select
+                      placeholder="Tìm kiếm và chọn trường..."
+                      options={units.map(u => ({ value: u.id, label: u.ten_don_vi }))}
+                      value={formData.don_vi_id ? { value: formData.don_vi_id, label: formData.don_vi_id } : null}
+                      onChange={(selectedOption: any) => setFormData({ ...formData, don_vi_id: selectedOption?.value || '' })}
+                      filterOption={(candidate, input) => {
+                        if (!input) return true;
+                        const removeAccents = (str: string) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+                        return removeAccents(candidate.label).includes(removeAccents(input));
+                      }}
+                      styles={{
+                        control: (base) => ({
+                          ...base,
+                          paddingLeft: '2.5rem',
+                          paddingTop: '0.25rem',
+                          paddingBottom: '0.25rem',
+                          borderRadius: '0.75rem',
+                          borderColor: '#e2e8f0',
+                          backgroundColor: '#f8fafc',
+                          boxShadow: 'none',
+                          '&:hover': {
+                            borderColor: '#cbd5e1'
+                          }
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected ? '#0f172a' : state.isFocused ? '#f1f5f9' : 'white',
+                          color: state.isSelected ? 'white' : '#0f172a',
+                          fontWeight: '500'
+                        })
+                      }}
+                      className="font-medium text-slate-900"
+                      noOptionsMessage={() => "Không tìm thấy trường nào"}
+                    />
                   </div>
                 </div>
 

@@ -38,8 +38,10 @@ model NguoiDung {
   mat_khau   String   @db.VarChar(255)
   ho_ten     String   @db.VarChar(255)
   vai_tro    VaiTro   @default(SINH_VIEN)
-  cccd       String?  @unique @db.VarChar(20)
+  cccd       String?  @unique @db.VarChar(255)
   trang_thai TrangThaiTK @default(ACTIVE)
+  reset_otp  String?  @db.VarChar(10)
+  reset_otp_expires DateTime?
   created_at DateTime @default(now())
 
   don_vi     DonVi?   @relation(fields: [don_vi_id], references: [id])
