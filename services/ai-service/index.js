@@ -385,6 +385,19 @@ function extractFutureDates(text) {
 
 const cheerio = require('cheerio');
 
+async function fetchOgImage(url) {
+    try {
+        const res = await axios.get(url, { 
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+            timeout: 3000
+        });
+        const $ = cheerio.load(res.data);
+        return $('meta[property="og:image"]').attr('content') || null;
+    } catch(e) {
+        return null;
+    }
+}
+
 async function searchActionableEvents(keyword, criteria) {
   // We want to find SV5T criteria posts that give certificates on Facebook
   const query = `site:facebook.com "sinh viên 5 tốt" "${keyword}" "nhận chứng chỉ" OR "giấy chứng nhận"`;
@@ -397,41 +410,12 @@ async function searchActionableEvents(keyword, criteria) {
     "https://uprace.org/wp-content/uploads/2023/07/Cover-Fanpage.jpg"
   ];
   
-  // Inject Gold Standard examples so the user sees exactly what they asked for (Actionable App events)
-  if (criteria === "Đạo đức tốt") {
-      validItems.push({
-          docId: 'GOLD_' + Date.now(),
-          title: "[Tiêu Chí Đạo Đức Tốt - SV5T] 📚HỌC TẬP VÀ LÀM THEO BÁC – NHẬN CHỨNG CHỈ TRÊN ỨNG DỤNG THANH NIÊN VIỆT NAM",
-          sourceName: "Facebook - Trung ương Đoàn TNCS HCM",
-          postLink: "https://www.facebook.com/Trunguongdoan",
-          createDate: new Date().toISOString(),
-          pictures: ["https://doanthanhnien.vn/Content/images/logo-dtn.png"]
-      });
-  } else if (criteria === "Tình nguyện tốt") {
-      validItems.push({
-          docId: 'GOLD_' + Date.now(),
-          title: "[Tiêu Chí Tình Nguyện Tốt] 🌍 ĐĂNG KÝ MÙA HÈ XANH 2026 - CẤP GIẤY CHỨNG NHẬN ĐẠT CHUẨN SV5T",
-          sourceName: "Facebook - Mạng lưới Tình nguyện Quốc gia",
-          postLink: "https://www.facebook.com/tinhnguyenquocgia",
-          createDate: new Date().toISOString(),
-          pictures: ["https://doanthanhnien.vn/Content/images/logo-dtn.png"]
-      });
-  } else if (criteria === "Hội nhập tốt") {
-      validItems.push({
-          docId: 'GOLD_' + Date.now(),
-          title: "[Tiêu Chí Hội Nhập Tốt] 🎓 THAM GIA HỘI THẢO ASEAN - NHẬN GIẤY CHỨNG NHẬN QUỐC TẾ CHO SV5T",
-          sourceName: "Facebook - ASEAN Youth Organization",
-          postLink: "https://www.facebook.com/AYO",
-          createDate: new Date().toISOString(),
-          pictures: ["https://vn.usembassy.gov/wp-content/uploads/sites/40/YSEALI-Logo.png"]
-      });
-  }
-  
   try {
       const res = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' }});
       const $ = cheerio.load(res.data);
       
-      $('.result').each((i, el) => {
+      const elements = $('.result').toArray();
+      for (const el of elements) {
           const title = $(el).find('.result__title').text().trim();
           const snippet = $(el).find('.result__snippet').text().trim();
           const rawLink = $(el).find('.result__url').attr('href');
@@ -459,15 +443,24 @@ async function searchActionableEvents(keyword, criteria) {
                   title: title,
                   sourceName: sourceName,
                   postLink: link,
-                  createDate: new Date().toISOString(),
-                  pictures: [genericThumbnails[Math.floor(Math.random() * genericThumbnails.length)]]
+                  createDate: new Date().toISOString()
               });
           }
-      });
+      }
+      
+      // Limit to 5 valid items before fetching images to save time
+      validItems = validItems.slice(0, 5);
+      
+      // Fetch actual Facebook images in parallel
+      await Promise.all(validItems.map(async (item) => {
+          const fbImage = await fetchOgImage(item.postLink);
+          item.pictures = [fbImage || genericThumbnails[Math.floor(Math.random() * genericThumbnails.length)]];
+      }));
+      
       return validItems;
   } catch (e) {
       console.error("DDG Search Error:", e.message);
-      return validItems; // At least return the gold standards
+      return [];
   }
 }
 
