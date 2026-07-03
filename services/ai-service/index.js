@@ -22,7 +22,7 @@ const path = require('path');
 // Read VNPT Credentials from api.md
 let smartbotConfig = {};
 try {
-  const apiContent = fs.readFileSync(path.join(__dirname, '../../api.md'), 'utf-8');
+  const apiContent = fs.readFileSync(fs.existsSync(path.join(__dirname, 'api.md')) ? path.join(__dirname, 'api.md') : '/api.md', 'utf-8');
   const lines = apiContent.split('\n');
   let inSmartbot = false;
   for (const line of lines) {

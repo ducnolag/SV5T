@@ -37,7 +37,10 @@ export default function ChatbotWidget({ onClose }: { onClose: () => void }) {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/ai/chat', {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const fetchUrl = baseUrl.endsWith('/api') ? `${baseUrl}/ai/chat` : `${baseUrl}/api/ai/chat`;
+      
+      const response = await fetch(fetchUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

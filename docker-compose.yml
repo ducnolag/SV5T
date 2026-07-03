@@ -99,6 +99,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3008:3008"
+    volumes:
+      - ./api.md:/app/api.md
 
   gateway-frontend:
     build:
