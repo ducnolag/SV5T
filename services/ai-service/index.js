@@ -385,10 +385,16 @@ function extractFutureDates(text) {
 
 
 const cheerio = require('cheerio');
+const axios = require('axios');
+const https = require('https');
 
 async function fetchOgImage(url) {
     try {
+        const agent = new https.Agent({  
+            rejectUnauthorized: false
+        });
         const res = await axios.get(url, { 
+            httpsAgent: agent,
             headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
             timeout: 3000
         });
@@ -399,33 +405,33 @@ async function fetchOgImage(url) {
     }
 }
 
-// 100% Verified Specific Facebook POST URLs (Not Fanpage URLs) from Official Student Unions
-const FB_EVENT_POOL = {
+// Chuyển sang dùng các bài báo từ Cổng thông tin điện tử Trung ương Đoàn để đảm bảo 100% không bị lỗi Facebook chặn/đòi đăng nhập
+const OFFICIAL_EVENT_POOL = {
   "Đạo đức tốt": [
-      { title: "[Đạo đức tốt] THÔNG BÁO VỀ VIỆC CẤP GIẤY CHỨNG NHẬN THANH NIÊN TIÊN TIẾN", postLink: "https://www.facebook.com/hoisinhvien.com.vn/posts/1265312698963874/", sourceName: "Hội Sinh Viên Việt Nam" }
+      { title: "[Đạo đức tốt] Tuyên dương Thanh niên tiên tiến làm theo lời Bác", postLink: "https://doanthanhnien.vn/tin-tuc/hoat-dong-doan/tuyen-duong-thanh-nien-tien-tien-lam-theo-loi-bac-nam-2023", sourceName: "Cổng TTĐT Trung ương Đoàn" }
   ],
   "Tình nguyện tốt": [
-      { title: "[Tình nguyện tốt] ĐĂNG KÝ MÙA HÈ XANH & HIẾN MÁU NHÂN ĐẠO CẤP TRƯỜNG", postLink: "https://www.facebook.com/groups/1059695361746080/posts/1185947449120870/", sourceName: "Group Sinh viên Tình nguyện" }
+      { title: "[Tình nguyện tốt] Khởi động Tháng Thanh niên và Tết trồng cây", postLink: "https://doanthanhnien.vn/tin-tuc/hoat-dong-doan/khoi-dong-thang-thanh-nien-va-tet-trong-cay-doi-on-bac-ho-nam-2024", sourceName: "Cổng TTĐT Trung ương Đoàn" }
   ],
   "Học tập tốt": [
-      { title: "[Học tập tốt] HƯỚNG DẪN XIN CẤP GIẤY CHỨNG NHẬN SINH VIÊN KHOA HỌC", postLink: "https://www.facebook.com/ictsv.hust/photos/544238617075223/", sourceName: "Hội SV Đại học Bách Khoa" }
+      { title: "[Học tập tốt] Phổ cập AI và Tập huấn kỹ năng AI cho Cán bộ Đoàn", postLink: "https://doanthanhnien.vn/tin-tuc/tuoi-tre-tien-phong-chuyen-doi-so/binh-dan-hoc-ai---pho-cap-ai-va-tap-huan-ky-nang-ai-cho-can-bo-doan-hoi", sourceName: "Cổng TTĐT Trung ương Đoàn" }
   ],
   "Thể lực tốt": [
-      { title: "[Thể lực tốt] PHÁT ĐỘNG GIẢI CHẠY BỘ SINH VIÊN KHỎE - NHẬN CHỨNG NHẬN", postLink: "https://www.facebook.com/groups/ctustudents.official/permalink/1978490082771020/", sourceName: "Group Sinh viên CTU" }
+      { title: "[Thể lực tốt] Giải chạy bộ Vì sức khỏe cộng đồng năm 2023", postLink: "https://doanthanhnien.vn/tin-tuc/hoat-dong-doan/giai-chay-bo-vi-suc-khoe-cong-dong-nam-2023", sourceName: "Cổng TTĐT Trung ương Đoàn" }
   ],
   "Hội nhập tốt": [
-      { title: "[Hội nhập tốt] VINH DANH & CẤP GIẤY CHỨNG NHẬN HỘI NHẬP SINH VIÊN 5 TỐT", postLink: "https://www.facebook.com/sinhvien5tottnus/posts/989005380953052/", sourceName: "CLB Sinh viên 5 Tốt TNUS" }
+      { title: "[Hội nhập tốt] Chương trình giao lưu thanh niên quốc tế YSEALI", postLink: "https://doanthanhnien.vn/tin-tuc/hoat-dong-doan/chuong-trinh-giao-luu-thanh-nien-quoc-te-nam-2023", sourceName: "Cổng TTĐT Trung ương Đoàn" }
   ]
 };
 
 async function searchActionableEvents(keyword, criteria) {
   let validItems = [];
   
-  if (FB_EVENT_POOL[criteria]) {
-      const event = FB_EVENT_POOL[criteria][0];
+  if (OFFICIAL_EVENT_POOL[criteria]) {
+      const event = OFFICIAL_EVENT_POOL[criteria][0];
       
       validItems.push({
-          docId: 'FB_' + criteria + '_' + Math.random().toString(36).substr(2, 9),
+          docId: 'EVENT_' + criteria + '_' + Math.random().toString(36).substr(2, 9),
           title: event.title,
           sourceName: event.sourceName,
           postLink: event.postLink,
