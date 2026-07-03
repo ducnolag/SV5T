@@ -18,6 +18,7 @@ const Tesseract = require('tesseract.js');
 const upload = multer({ storage: multer.memoryStorage() });
 const fs = require('fs');
 const path = require('path');
+const xml2js = require('xml2js');
 
 // Read VNPT Credentials from api.md
 let smartbotConfig = {};
@@ -364,139 +365,97 @@ async function getVnSocialToken() {
   }
 }
 
+function extractFutureDates(text) {
+  const dateRegex = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?\b/g;
+  let match;
+  const now = new Date();
+  while ((match = dateRegex.exec(text)) !== null) {
+      const day = parseInt(match[1]);
+      const month = parseInt(match[2]);
+      const year = match[3] ? parseInt(match[3]) : now.getFullYear();
+      if (day > 0 && day <= 31 && month > 0 && month <= 12) {
+          const eventDate = new Date(year, month - 1, day);
+          if (eventDate > now) {
+              return true;
+          }
+      }
+  }
+  return false;
+}
+
+async function searchGoogleNews(keyword) {
+  const url = `https://news.google.com/rss/search?q=${encodeURIComponent('"sinh viên" "' + keyword + '"')}&hl=vi&gl=VN&ceid=VN:vi`;
+  try {
+      const res = await axios.get(url);
+      const parser = new xml2js.Parser({ explicitArray: false });
+      const result = await parser.parseStringPromise(res.data);
+      let items = result.rss?.channel?.item || [];
+      if (!Array.isArray(items)) items = [items];
+      
+      let validItems = [];
+      const fiveDaysAgo = Date.now() - 5 * 24 * 60 * 60 * 1000;
+      const genericThumbnails = [
+        "https://doanthanhnien.vn/Content/images/logo-dtn.png",
+        "https://khoahoctre.com.vn/wp-content/uploads/2023/10/EUREKA-2023.jpg",
+        "https://uprace.org/wp-content/uploads/2023/07/Cover-Fanpage.jpg",
+        "https://lh3.googleusercontent.com/-DR60l-K8vnyi99NZovm9HlXyZwQ85GMDxiwJWzoasZYCUrPuU"
+      ];
+      
+      for (const item of items) {
+          if (!item.title) continue;
+          const textToAnalyze = (item.title + ' ' + (item.description || '')).toLowerCase();
+          const pubDate = new Date(item.pubDate).getTime();
+          
+          const hasFutureDate = extractFutureDates(textToAnalyze);
+          const isRecent = pubDate > fiveDaysAgo;
+          const hasActionWords = /phát động|tuyển|mở đơn|đăng ký|tham gia|mời gọi|cuộc thi|giải thưởng/.test(textToAnalyze);
+          
+          if (hasFutureDate || (isRecent && hasActionWords) || pubDate > Date.now() - 2 * 24 * 60 * 60 * 1000) {
+              validItems.push({
+                  docId: 'GG_' + Math.random().toString(36).substr(2, 9),
+                  title: item.title.split(' - ')[0],
+                  sourceName: "Google Tin Tức - " + (item.source?._ || 'Báo điện tử'),
+                  postLink: item.link,
+                  createDate: new Date(item.pubDate).toISOString(),
+                  pictures: [genericThumbnails[Math.floor(Math.random() * genericThumbnails.length)]]
+              });
+          }
+      }
+      return validItems;
+  } catch (e) {
+      console.error("RSS Search Error:", e.message);
+      return [];
+  }
+}
+
 app.get('/api/ai/recommendations/:studentId', async (req, res) => {
   try {
     const missingQuery = req.query.missing;
     const missingCriteriaList = missingQuery ? missingQuery.split(',') : ["Học tập tốt", "Đạo đức tốt", "Thể lực tốt", "Tình nguyện tốt", "Hội nhập tốt"];
     
-    const token = await getVnSocialToken();
-    let fetchedPosts = [];
-    
-    if (token) {
-      try {
-        const projRes = await axios.get('https://api-vnsocialplus.vnpt.vn/social-api/v1/projects?type=TOPIC_POLICY', {
-          headers: { 'x-access-token': token }
-        });
-        const projects = projRes.data?.object?.data || [];
-        const projectId = projects.length > 0 ? projects[0].id : '659375db02d0a2846d952551';
-        
-        const postRes = await axios.post('https://api-vnsocialplus.vnpt.vn/social-api/v1/projects/posts', {
-          project_id: projectId,
-          source: 'facebook',
-          start_time: Date.now() - 30 * 24 * 60 * 60 * 1000,
-          end_time: Date.now(),
-          from: 0,
-          size: 50, // Fetch more to filter locally
-          reactionary: false
-        }, {
-          headers: { 'x-access-token': token }
-        });
-        
-        fetchedPosts = postRes.data?.object || [];
-      } catch (apiErr) {
-        console.error("vnSocial fetch error:", apiErr.message);
-      }
-    }
-    
-    // Keyword matching logic for real posts
-    const KEYWORDS = {
-      "Đạo đức tốt": ["đạo đức", "khen thưởng", "chấp hành", "tuyên dương", "tấm gương", "việc tử tế"],
-      "Học tập tốt": ["học tập", "nghiên cứu", "khoa học", "gpa", "tiếng anh", "giải thưởng", "giáo dục", "học bổng", "nckh", "ielts", "toeic"],
-      "Thể lực tốt": ["thể lực", "thể thao", "giải chạy", "bóng đá", "thanh niên khỏe", "vug", "marathon", "thể chất"],
-      "Tình nguyện tốt": ["tình nguyện", "mùa hè xanh", "hiến máu", "chiến dịch", "tích cực", "xã hội", "tiếp sức", "từ thiện"],
-      "Hội nhập tốt": ["hội nhập", "kỹ năng", "quốc tế", "giao lưu", "ngoại ngữ", "toạ đàm", "asean", "hội thảo", "startup", "khởi nghiệp"]
-    };
-
-    const MOCK_EVENTS = {
-      "Đạo đức tốt": [
-        {
-          docId: "DD_01_" + Date.now(),
-          title: "Hiến máu nhân đạo tại Viện Huyết học - Truyền máu Trung ương (Nhận giấy chứng nhận)",
-          sourceName: "Facebook - Viện Huyết học",
-          postLink: "https://www.facebook.com/vienhuyethoc",
-          pictures: ["https://vienhuyethoc.vn/wp-content/uploads/2020/02/lich-hien-mau.jpg"],
-          createDate: new Date().toISOString(),
-        }
-      ],
-      "Học tập tốt": [
-        {
-          docId: "HT_01_" + Date.now(),
-          title: "Tham gia Giải thưởng Sinh viên Nghiên cứu Khoa học Euréka 2024",
-          sourceName: "Facebook - Khoa Học Trẻ",
-          postLink: "https://www.facebook.com/khoahoctre",
-          pictures: ["https://khoahoctre.com.vn/wp-content/uploads/2023/10/EUREKA-2023.jpg"],
-          createDate: new Date().toISOString(),
-        }
-      ],
-      "Tình nguyện tốt": [
-        {
-          docId: "TN_01_" + Date.now(),
-          title: "Đăng ký các hoạt động tại Cổng thông tin Tình nguyện Quốc gia",
-          sourceName: "Facebook - Mạng lưới Tình nguyện Quốc gia",
-          postLink: "https://www.facebook.com/tinhnguyenquocgia",
-          pictures: ["https://doanthanhnien.vn/Content/images/logo-dtn.png"],
-          createDate: new Date().toISOString(),
-        }
-      ],
-      "Thể lực tốt": [
-        {
-          docId: "TL_01_" + Date.now(),
-          title: "Thử thách chạy bộ trực tuyến UpRace (Có cấp chứng nhận hoàn thành)",
-          sourceName: "Facebook - UpRace",
-          postLink: "https://www.facebook.com/uprace",
-          pictures: ["https://uprace.org/wp-content/uploads/2023/07/Cover-Fanpage.jpg"],
-          createDate: new Date().toISOString(),
-        }
-      ],
-      "Hội nhập tốt": [
-        {
-          docId: "HN_01_" + Date.now(),
-          title: "Đăng ký Sáng kiến Thủ lĩnh trẻ Đông Nam Á (YSEALI)",
-          sourceName: "Facebook - U.S. Embassy Hanoi",
-          postLink: "https://www.facebook.com/usembassyhanoi",
-          pictures: ["https://vn.usembassy.gov/wp-content/uploads/sites/40/YSEALI-Logo.png"],
-          createDate: new Date().toISOString(),
-        }
-      ]
-    };
-
     let recommendations = [];
 
-    // Filter logic: Recommend multiple per criteria
+    // Filter logic: Recommend multiple per criteria using Google News live search
     for (const criteria of missingCriteriaList) {
       if (!criteria) continue;
-      const keywords = KEYWORDS[criteria] || [];
-      const matchedPosts = fetchedPosts.filter(p => {
-        const text = (p.title + " " + (p.description||"") + " " + (p.content||"")).toLowerCase();
-        return keywords.some(k => text.includes(k.toLowerCase()));
-      });
-
-      if (matchedPosts.length > 0) {
-        matchedPosts.slice(0, 10).forEach(matchedPost => {
-          recommendations.push({
-            id: matchedPost.docId,
-            title: matchedPost.title,
-            matched_criteria: criteria,
-            source: matchedPost.sourceName,
-            date: matchedPost.createDate?.substring(0, 10) || new Date().toISOString().substring(0, 10),
-            postLink: matchedPost.postLink,
-            pictures: matchedPost.pictures || (matchedPost.picture ? [matchedPost.picture] : [])
-          });
-          fetchedPosts = fetchedPosts.filter(p => p.docId !== matchedPost.docId);
-        });
-      }
       
-      // Always add at least 1 evergreen real activity to ensure they have an actionable proof-gathering link
-      const mocks = MOCK_EVENTS[criteria] || MOCK_EVENTS["Học tập tốt"];
-      mocks.forEach(mock => {
+      // Auto search Google News for related valid activities
+      const searchKeyword = criteria === "Tình nguyện tốt" ? "tình nguyện" : 
+                            criteria === "Học tập tốt" ? "học tập" :
+                            criteria === "Thể lực tốt" ? "thể thao" :
+                            criteria === "Hội nhập tốt" ? "hội nhập" : "đạo đức";
+                            
+      const liveItems = await searchGoogleNews(searchKeyword);
+      
+      liveItems.slice(0, 5).forEach(item => {
         recommendations.push({
-          id: mock.docId,
-          title: mock.title,
+          id: item.docId,
+          title: item.title,
           matched_criteria: criteria,
-          source: mock.sourceName,
-          date: mock.createDate.substring(0, 10),
-          postLink: mock.postLink,
-          pictures: mock.pictures
+          source: item.sourceName,
+          date: item.createDate.substring(0, 10),
+          postLink: item.postLink,
+          pictures: item.pictures
         });
       });
     }
