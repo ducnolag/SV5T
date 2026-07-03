@@ -386,7 +386,7 @@ app.get('/api/ai/recommendations/:studentId', async (req, res) => {
           start_time: Date.now() - 30 * 24 * 60 * 60 * 1000,
           end_time: Date.now(),
           from: 0,
-          size: 20, // Fetch more to filter locally
+          size: 50, // Fetch more to filter locally
           reactionary: false
         }, {
           headers: { 'x-access-token': token }
@@ -501,6 +501,8 @@ app.get('/api/ai/recommendations/:studentId', async (req, res) => {
       });
     }
 
+    // Sort by newest first
+    recommendations.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     // Limit total recommendations to 20 so there are plenty for the carousel
     recommendations = recommendations.slice(0, 20);
     

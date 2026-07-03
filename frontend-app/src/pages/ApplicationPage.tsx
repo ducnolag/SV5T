@@ -606,9 +606,11 @@ export default function ApplicationPage() {
                           </td>
                           <td className="py-4 px-6 text-right">
                             <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => setReviewAction({ id: app.id, action: 'REJECT' })} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors tooltip" title="Từ chối"><XCircle size={18} /></button>
                               {app.trang_thai.startsWith('CHO_') && (
-                                <button onClick={() => setReviewAction({ id: app.id, action: 'APPROVE' })} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors tooltip" title="Duyệt"><CheckCircle size={18} /></button>
+                                <>
+                                  <button onClick={() => setReviewAction({ id: app.id, action: 'REJECT' })} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors tooltip" title="Từ chối"><XCircle size={18} /></button>
+                                  <button onClick={() => setReviewAction({ id: app.id, action: 'APPROVE' })} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors tooltip" title="Duyệt"><CheckCircle size={18} /></button>
+                                </>
                               )}
                               {app.trang_thai.startsWith('DAT_') && app.trang_thai !== 'DAT_SV5T' && (
                                 <button onClick={() => handleEscalate(app.id)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors tooltip" title="Nộp lên tuyến trên"><ArrowUpCircle size={18} /></button>

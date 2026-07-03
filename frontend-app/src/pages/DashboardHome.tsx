@@ -174,13 +174,13 @@ export default function DashboardHome() {
                 <span className={`px-3 py-1.5 rounded-md text-sm font-bold ${STATUS_CONFIG[myApp.trang_thai]?.bg} ${STATUS_CONFIG[myApp.trang_thai]?.text}`}>
                   {STATUS_CONFIG[myApp.trang_thai]?.label}
                 </span>
-                {myApp.ai_flag && (
+                {myApp.ai_flag && myApp.trang_thai === 'CHO_DUYET_TRUONG' && (
                   <span className={`px-3 py-1.5 rounded-md text-sm font-bold border ${
                     myApp.ai_flag === 'XANH' ? 'bg-green-50 text-green-700 border-green-200' :
                     myApp.ai_flag === 'VANG' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                     'bg-red-50 text-red-700 border-red-200'
                   }`}>
-                    Đánh giá sơ bộ: {myApp.ai_flag === 'XANH' ? 'Đủ điều kiện' : myApp.ai_flag === 'VANG' ? 'Thiếu minh chứng' : 'Không đạt'}
+                    AI Sơ duyệt: {myApp.ai_flag === 'XANH' ? 'Đủ điều kiện' : myApp.ai_flag === 'VANG' ? 'Thiếu minh chứng' : 'Chưa đạt'}
                   </span>
                 )}
               </div>
