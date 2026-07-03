@@ -69,7 +69,7 @@ let ProofService = class ProofService {
                 }
             });
             if (existing) {
-                throw new BadRequestException(`Tệp "${file.originalname}" đã được tải lên trước đó. Vui lòng không nộp trùng lặp minh chứng!`);
+                throw new common_1.BadRequestException(`Tệp "${file.originalname}" đã được tải lên trước đó. Vui lòng không nộp trùng lặp minh chứng!`);
             }
             const safeName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_');
             const fileName = `${Date.now()}__${hash}__${safeName}`;

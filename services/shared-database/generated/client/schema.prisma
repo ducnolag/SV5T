@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model DonVi {
+  id         String   @id @default(uuid()) @db.Uuid
+  ten_don_vi String   @db.VarChar(255)
+  cap_do     CapDo // TW, TINH, TRUONG, KHOA_CLB
+  parent_id  String?  @db.Uuid
+  trang_thai Boolean  @default(true)
+  created_at DateTime @default(now())
+
+  parent   DonVi?  @relation("DonViHierarchy", fields: [parent_id], references: [id])
+  children DonVi[] @relation("DonViHierarchy")
+
+  nguoi_dungs NguoiDung[]
+  quy_ches    QuyChe[]
+  hoat_dongs  HoatDong[]
+}
+
+enum CapDo {
+  TW
+  TINH
+  TRUONG
+  KHOA_CLB
+}
+
+model NguoiDung {
+  id                String      @id @default(uuid()) @db.Uuid
+  don_vi_id         String?     @db.Uuid
+  email             String      @unique @db.VarChar(255)
+  msv               String?     @unique @db.VarChar(50)
+  mat_khau          String      @db.VarChar(255)
+  ho_ten            String      @db.VarChar(255)
+  vai_tro           VaiTro      @default(SINH_VIEN)
+  cccd              String?     @unique @db.VarChar(255)
+  trang_thai        TrangThaiTK @default(ACTIVE)
+  so_dien_thoai     String?     @db.VarChar(20)
+  reset_otp         String?     @db.VarChar(10)
+  reset_otp_expires DateTime?
+  created_at        DateTime    @default(now())
+
+  don_vi DonVi? @relation(fields: [don_vi_id], references: [id])
+
+  diem_danhs       DiemDanh[]
+  minh_chungs      MinhChung[]
+  ho_sos           HoSo[]
+  hoat_dong_duyets HoatDong[]  @relation("NguoiDuyetHD")
+}
+
+enum VaiTro {
+  SINH_VIEN
+  CB_TRUONG
+  CB_TINH
+  CB_TW
+  LCH_CLB
+  ADMIN
+}
+
+enum TrangThaiTK {
+  ACTIVE
+  LOCKED
+}
+
+model QuyChe {
+  id              String   @id @default(uuid()) @db.Uuid
+  don_vi_id       String   @db.Uuid
+  nam_hoc         String   @db.VarChar(20)
+  ngay_mo_cong    DateTime
+  ngay_dong_cong  DateTime
+  so_tieu_chi_dat Int      @default(5)
+  created_at      DateTime @default(now())
+
+  don_vi    DonVi     @relation(fields: [don_vi_id], references: [id])
+  tieu_chis TieuChi[]
+  ho_sos    HoSo[]
+
+  @@unique([don_vi_id, nam_hoc])
+}
+
+model TieuChi {
+  id               String  @id @default(uuid()) @db.Uuid
+  quy_che_id       String  @db.Uuid
+  ten_tieu_chi     String  @db.VarChar(255)
+  mo_ta            String? @db.Text
+  thu_tu           Int?
+  so_luong_yeu_cau Int     @default(1)
+
+  quy_che     QuyChe      @relation(fields: [quy_che_id], references: [id])
+  hoat_dongs  HoatDong[]
+  minh_chungs MinhChung[]
+}
+
+model HoatDong {
+  id                 String   @id @default(uuid()) @db.Uuid
+  ten_hoat_dong      String   @db.VarChar(255)
+  don_vi_tc_id       String   @db.Uuid
+  thoi_gian_bat_dau  DateTime
+  thoi_gian_ket_thuc DateTime
+  dia_diem           String?  @db.VarChar(255)
+  hinh_thuc_dd       String   @db.VarChar(20) // CAMERA, EXCEL, KET_HOP
+  trang_thai         String   @db.VarChar(30) // CHO_DUYET, DA_DUYET, TU_CHOI
+  nguoi_duyet_id     String?  @db.Uuid
+  ly_do_tu_choi      String?  @db.Text
+  created_at         DateTime @default(now())
+
+  don_vi_tc   DonVi      @relation(fields: [don_vi_tc_id], references: [id])
+  nguoi_duyet NguoiDung? @relation("NguoiDuyetHD", fields: [nguoi_duyet_id], references: [id])
+  tieu_chis   TieuChi[]
+  diem_danhs  DiemDanh[]
+}
+
+model DiemDanh {
+  id            String   @id @default(uuid()) @db.Uuid
+  hoat_dong_id  String   @db.Uuid
+  nguoi_dung_id String   @db.Uuid
+  phuong_thuc   String   @db.VarChar(20)
+  thoi_gian     DateTime @default(now())
+  da_chot       Boolean  @default(false)
+
+  hoat_dong  HoatDong  @relation(fields: [hoat_dong_id], references: [id])
+  nguoi_dung NguoiDung @relation(fields: [nguoi_dung_id], references: [id])
+
+  @@unique([hoat_dong_id, nguoi_dung_id])
+}
+
+model MinhChung {
+  id                 String   @id @default(uuid()) @db.Uuid
+  nguoi_dung_id      String   @db.Uuid
+  tieu_chi_id        String?  @db.Uuid
+  loai               String   @db.VarChar(20) // NOI_BO, BEN_NGOAI
+  ten_minh_chung     String?  @db.VarChar(255)
+  file_url           String   @db.Text
+  trang_thai         String   @db.VarChar(30) // DANG_XL, DA_XAC_THUC, CAN_KIEM_TRA, DA_DUYET, BI_LOAI
+  ai_xac_thuc_muc_do Int? // Confidence score
+  nguoi_duyet_id     String?  @db.Uuid
+  ly_do_loai         String?  @db.Text
+  created_at         DateTime @default(now())
+
+  nguoi_dung NguoiDung @relation(fields: [nguoi_dung_id], references: [id])
+  tieu_chi   TieuChi?  @relation(fields: [tieu_chi_id], references: [id])
+  ho_sos     HoSo[]
+}
+
+model HoSo {
+  id            String        @id @default(uuid()) @db.Uuid
+  nguoi_dung_id String        @db.Uuid
+  quy_che_id    String        @db.Uuid
+  cap_hien_tai  String        @default("TRUONG") @db.VarChar(20)
+  trang_thai    TrangThaiHoSo @default(DANG_TAO)
+  ai_flag       String?       @db.VarChar(10) // XANH, VANG, DO
+  ghi_chu_ai    String?       @db.Text
+  khoa          Boolean       @default(false)
+  ngay_nop      DateTime?
+  created_at    DateTime      @default(now())
+
+  nguoi_dung  NguoiDung   @relation(fields: [nguoi_dung_id], references: [id])
+  quy_che     QuyChe      @relation(fields: [quy_che_id], references: [id])
+  minh_chungs MinhChung[]
+
+  @@unique([nguoi_dung_id, quy_che_id])
+}
+
+enum TrangThaiHoSo {
+  DANG_TAO
+  DA_NOP
+  CHO_DUYET_TRUONG
+  DAT_TRUONG
+  CHO_DUYET_TINH
+  DAT_TINH
+  CHO_DUYET_TW
+  DAT_SV5T
+  BI_TU_CHOI
+}
