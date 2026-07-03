@@ -69,15 +69,17 @@ app.post('/api/ai/chat', async (req, res) => {
   try {
     // Lấy quy chế mới nhất từ Database thông qua application-service
     let allQuyChes = [];
+    let namHoc = "2025-2026";
+    let activeRules = [];
     try {
       const authHeader = req.headers.authorization;
-      const response = await axios.get('http://localhost:3006/applications/quy-ches', {
+      const response = await axios.get('http://application:3006/applications/quy-ches', {
         headers: authHeader ? { Authorization: authHeader } : {}
       });
       if (response.data && response.data.length > 0) {
         allQuyChes = response.data;
         namHoc = response.data[0].nam_hoc;
-        activeRules = response.data[0].tieu_chis;
+        activeRules = response.data[0].tieu_chis || [];
       }
     } catch (e) {
       console.error('Lỗi khi gọi rules API, dùng fallback:', e.message);
