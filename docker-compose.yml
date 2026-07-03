@@ -24,12 +24,14 @@ services:
       context: .
       dockerfile: services/auth-service/Dockerfile
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/sv5t_auth
+      - MONGO_URI=mongodb://mongodb:27017/sv5t_auth
       - DATABASE_URL=postgresql://postgres:%40Duclag123@postgres:5432/sv5t_db?schema=public
       - JWT_SECRET=sv5t-super-secret-key
     depends_on:
       - postgres
       - mongodb
+    volumes:
+      - ./api.md:/app/api.md
 
   unit:
     build:
@@ -91,6 +93,13 @@ services:
     depends_on:
       - postgres
 
+  ai:
+    build:
+      context: services/ai-service
+      dockerfile: Dockerfile
+    ports:
+      - "3008:3008"
+
   gateway-frontend:
     build:
       context: .
@@ -105,6 +114,7 @@ services:
       - proof
       - application
       - notification
+      - ai
 
 volumes:
   pgdata:

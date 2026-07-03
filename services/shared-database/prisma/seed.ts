@@ -1,4 +1,4 @@
-import { PrismaClient, CapDoDonVi, VaiTro } from '@prisma/client';
+import { PrismaClient, CapDo, VaiTro } from '../generated/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -7,31 +7,31 @@ async function main() {
   console.log('Start seeding...');
 
   // 1. Create Units
-  const donViTW = await prisma.don_vi.create({
+  const donViTW = await prisma.donVi.create({
     data: {
       ten_don_vi: 'Trung ương Hội Sinh viên Việt Nam',
-      cap_do: CapDoDonVi.TW,
+      cap_do: CapDo.TW,
     },
   });
 
-  const donViTinh = await prisma.don_vi.create({
+  const donViTinh = await prisma.donVi.create({
     data: {
       ten_don_vi: 'Hội Sinh viên Thành phố Hà Nội',
-      cap_do: CapDoDonVi.TINH,
+      cap_do: CapDo.TINH,
       parent_id: donViTW.id,
     },
   });
 
-  const donViTruong = await prisma.don_vi.create({
+  const donViTruong = await prisma.donVi.create({
     data: {
       ten_don_vi: 'Đại học Quốc gia Hà Nội',
-      cap_do: CapDoDonVi.TRUONG,
+      cap_do: CapDo.TRUONG,
       parent_id: donViTinh.id,
     },
   });
 
   // 2. Create Quy Che
-  const quyChe = await prisma.quy_che.create({
+  const quyChe = await prisma.quyChe.create({
     data: {
       don_vi_id: donViTW.id,
       nam_hoc: '2025-2026',
@@ -44,7 +44,7 @@ async function main() {
   // 3. Create Tieu Chi (5 defaults)
   const tieuChis = ['Đạo đức tốt', 'Học tập tốt', 'Thể lực tốt', 'Tình nguyện tốt', 'Hội nhập tốt'];
   for (let i = 0; i < tieuChis.length; i++) {
-    await prisma.tieu_chi.create({
+    await prisma.tieuChi.create({
       data: {
         quy_che_id: quyChe.id,
         ten_tieu_chi: tieuChis[i],
@@ -55,7 +55,7 @@ async function main() {
 
   // 4. Create Admin User
   const hashedPassword = await bcrypt.hash('admin@123', 10);
-  const admin = await prisma.nguoi_dung.create({
+  const admin = await prisma.nguoiDung.create({
     data: {
       email: 'admin@sv5t.vn',
       mat_khau: hashedPassword,

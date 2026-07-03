@@ -246,7 +246,7 @@ export class AuthService {
     
     // Read tokens from api.md dynamically
     const fs = require('fs');
-    const apiMd = fs.readFileSync('d:/hackathon/api.md', 'utf8');
+    const apiMd = fs.readFileSync('/app/api.md', 'utf8');
     const tokenIdMatch = apiMd.match(/Token ID: (.+)/);
     const tokenKeyMatch = apiMd.match(/Token Key: (.+)/);
     const accessTokenMatch = apiMd.match(/Access Token: (Bearer .+)/);

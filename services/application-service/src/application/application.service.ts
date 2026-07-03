@@ -6,7 +6,7 @@ import axios from 'axios';
 
 @Injectable()
 export class ApplicationService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getMyApplications(userId: string) {
     return this.prisma.hoSo.findMany({
@@ -29,7 +29,7 @@ export class ApplicationService {
     });
     if (!app) throw new NotFoundException('Không tìm thấy hồ sơ');
     if (user.role === VaiTro.SINH_VIEN && app.nguoi_dung_id !== user.id) {
-       throw new ForbiddenException('Bạn không có quyền xem hồ sơ này');
+      throw new ForbiddenException('Bạn không có quyền xem hồ sơ này');
     }
     return app;
   }
@@ -43,7 +43,7 @@ export class ApplicationService {
       [VaiTro.ADMIN]: [TrangThaiHoSo.CHO_DUYET_TRUONG, TrangThaiHoSo.DAT_TRUONG, TrangThaiHoSo.CHO_DUYET_TINH, TrangThaiHoSo.DAT_TINH, TrangThaiHoSo.CHO_DUYET_TW, TrangThaiHoSo.DAT_SV5T],
     };
     const states = pendingStateMap[user.role] || [];
-    
+
     let userFilter = {};
     if (user.role === VaiTro.CB_TRUONG) {
       userFilter = { nguoi_dung: { don_vi_id: user.don_vi_id } };
@@ -54,7 +54,7 @@ export class ApplicationService {
     }
 
     return this.prisma.hoSo.findMany({
-      where: { 
+      where: {
         trang_thai: { in: states },
         ...userFilter
       },
@@ -70,7 +70,7 @@ export class ApplicationService {
   async getQuyChes(userPayload: any) {
     const dbUser = await this.prisma.nguoiDung.findUnique({ where: { id: userPayload.id } });
     if (!dbUser) return [];
-    
+
     if (dbUser.vai_tro === VaiTro.ADMIN && !dbUser.don_vi_id) {
       return this.prisma.quyChe.findMany({
         include: { tieu_chis: true, don_vi: true },
@@ -214,9 +214,9 @@ export class ApplicationService {
         where: { id },
         include: { minh_chungs: { include: { tieu_chi: true } }, quy_che: { include: { tieu_chis: true } } }
       });
-      
+
       if (!app) {
-         throw new NotFoundException('Không tìm thấy hồ sơ');
+        throw new NotFoundException('Không tìm thấy hồ sơ');
       }
     }
 
@@ -229,8 +229,8 @@ export class ApplicationService {
     const uniqueTcs = Array.from(uniqueTcsMap.values());
 
     for (const tc of uniqueTcs) {
-      const tcProofs = app.minh_chungs.filter(mc => 
-        mc.tieu_chi_id === tc.id || 
+      const tcProofs = app.minh_chungs.filter(mc =>
+        mc.tieu_chi_id === tc.id ||
         app.quy_che.tieu_chis.find(t => t.id === mc.tieu_chi_id)?.ten_tieu_chi?.trim().toLowerCase() === tc.ten_tieu_chi.trim().toLowerCase() ||
         // Check if mc has populated tieu_chi (it might not be populated in findUnique)
         (mc as any).tieu_chi?.ten_tieu_chi?.trim().toLowerCase() === tc.ten_tieu_chi.trim().toLowerCase()
@@ -261,7 +261,7 @@ export class ApplicationService {
     });
     try {
       await axios.post('http://localhost:3007/internal/broadcast', { message: 'REFRESH_APPLICATIONS' });
-    } catch (e) {}
+    } catch (e) { }
     return updated;
   }
 
@@ -277,13 +277,13 @@ export class ApplicationService {
 
     // Role-based logic
     if (app.trang_thai === TrangThaiHoSo.CHO_DUYET_TRUONG && user.role !== VaiTro.CB_TRUONG && user.role !== VaiTro.ADMIN) {
-        throw new ForbiddenException('Chỉ Cán bộ Trường mới có quyền duyệt hồ sơ cấp Trường');
+      throw new ForbiddenException('Chỉ Cán bộ Trường mới có quyền duyệt hồ sơ cấp Trường');
     }
     if (app.trang_thai === TrangThaiHoSo.CHO_DUYET_TINH && user.role !== VaiTro.CB_TINH && user.role !== VaiTro.ADMIN) {
-        throw new ForbiddenException('Chỉ Cán bộ Tỉnh mới có quyền duyệt hồ sơ cấp Tỉnh');
+      throw new ForbiddenException('Chỉ Cán bộ Tỉnh mới có quyền duyệt hồ sơ cấp Tỉnh');
     }
     if (app.trang_thai === TrangThaiHoSo.CHO_DUYET_TW && user.role !== VaiTro.CB_TW && user.role !== VaiTro.ADMIN) {
-        throw new ForbiddenException('Chỉ Cán bộ TW mới có quyền duyệt hồ sơ cấp TW');
+      throw new ForbiddenException('Chỉ Cán bộ TW mới có quyền duyệt hồ sơ cấp TW');
     }
 
     const updatedApp = await this.prisma.hoSo.update({
@@ -315,35 +315,35 @@ export class ApplicationService {
 
   async escalateBatch(appIds: string[], user: any) {
     if (user.role !== VaiTro.CB_TRUONG && user.role !== VaiTro.CB_TINH && user.role !== VaiTro.ADMIN) {
-        throw new ForbiddenException('Bạn không có quyền trình tuyến trên');
+      throw new ForbiddenException('Bạn không có quyền trình tuyến trên');
     }
 
     const apps = await this.prisma.hoSo.findMany({
-        where: { id: { in: appIds } }
+      where: { id: { in: appIds } }
     });
 
     for (const app of apps) {
-        let nextState: TrangThaiHoSo = app.trang_thai;
-        let nextCap = app.cap_hien_tai;
-        if (app.trang_thai === TrangThaiHoSo.DAT_TRUONG) {
-            nextState = TrangThaiHoSo.CHO_DUYET_TINH;
-            nextCap = 'TINH';
-        } else if (app.trang_thai === TrangThaiHoSo.DAT_TINH) {
-            nextState = TrangThaiHoSo.CHO_DUYET_TW;
-            nextCap = 'TW';
-        } else {
-            throw new BadRequestException(`Hồ sơ ${app.id} không ở trạng thái hợp lệ để trình tuyến trên`);
-        }
+      let nextState: TrangThaiHoSo = app.trang_thai;
+      let nextCap = app.cap_hien_tai;
+      if (app.trang_thai === TrangThaiHoSo.DAT_TRUONG) {
+        nextState = TrangThaiHoSo.CHO_DUYET_TINH;
+        nextCap = 'TINH';
+      } else if (app.trang_thai === TrangThaiHoSo.DAT_TINH) {
+        nextState = TrangThaiHoSo.CHO_DUYET_TW;
+        nextCap = 'TW';
+      } else {
+        throw new BadRequestException(`Hồ sơ ${app.id} không ở trạng thái hợp lệ để trình tuyến trên`);
+      }
 
-        await this.prisma.hoSo.update({
-            where: { id: app.id },
-            data: { trang_thai: nextState, cap_hien_tai: nextCap }
-        });
+      await this.prisma.hoSo.update({
+        where: { id: app.id },
+        data: { trang_thai: nextState, cap_hien_tai: nextCap }
+      });
     }
 
     try {
       await axios.post('http://localhost:3007/internal/broadcast', { message: 'REFRESH_APPLICATIONS' });
-    } catch (e) {}
+    } catch (e) { }
 
     return { message: `Đã trình tuyến trên thành công ${apps.length} hồ sơ` };
   }

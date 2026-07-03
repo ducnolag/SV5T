@@ -38,7 +38,7 @@ export default function DashboardLayout() {
     { name: 'Duyệt hồ sơ', path: '/applications', icon: CheckSquare, show: isStaff },
     { name: 'Minh Chứng', path: '/proofs', icon: Award, show: user?.role === 'SINH_VIEN' },
     { name: 'Hồ Sơ SV5T', path: '/applications', icon: FileText, show: user?.role === 'SINH_VIEN' },
-    { name: 'Quản lý Quy chế', path: '/rules', icon: FileText, show: user?.role === 'CAN_BO_TRUONG' },
+    { name: 'Quản lý Quy chế', path: '/rules', icon: FileText, show: user?.role === 'CB_TRUONG' || user?.role === 'ADMIN' },
     { name: 'Hồ Sơ Cá Nhân', path: '/profile', icon: User, show: true },
   ].filter(i => i.show);
 

@@ -191,10 +191,10 @@ export default function ApplicationPage() {
     a.nguoi_dung?.msv?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Logic tự động tìm quy chế đang mở mà SV chưa tham gia (và chỉ cho phép tự ứng cử ở cấp trường/cấp trực tiếp)
+  // Logic tự động tìm quy chế đang mở mà SV chưa tham gia (và chỉ cho phép tự ứng cử ở cấp trường/cấp trực tiếp hoặc cấp Trung ương)
   const activeQuyChes = quyChes.filter(qc => {
     const notJoined = !myApps.some(app => app.quy_che?.id === qc.id);
-    const isDirect = qc.don_vi_id === user?.don_vi_id;
+    const isDirect = qc.don_vi_id === user?.don_vi_id || qc.don_vi?.cap_do === 'TW';
     return notJoined && isDirect;
   });
 
