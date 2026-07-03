@@ -16,35 +16,96 @@ process.on('unhandledRejection', (reason, promise) => {
 const multer = require('multer');
 const Tesseract = require('tesseract.js');
 const upload = multer({ storage: multer.memoryStorage() });
+const fs = require('fs');
+const path = require('path');
 
-const SMARTBOT_TOKEN = process.env.SMARTBOT_TOKEN || 'Bearer ey...'; // From api.md
-const SMARTREADER_TOKEN = process.env.SMARTREADER_TOKEN || 'Bearer ey...'; 
+// Read VNPT Credentials from api.md
+let smartbotConfig = {};
+try {
+  const apiContent = fs.readFileSync(path.join(__dirname, '../../api.md'), 'utf-8');
+  const lines = apiContent.split('\n');
+  let inSmartbot = false;
+  for (const line of lines) {
+    if (line.includes('3. VNPT SmartBot')) inSmartbot = true;
+    else if (line.match(/^\d\./)) inSmartbot = false;
+    
+    if (inSmartbot) {
+      if (line.startsWith('Token ID:')) smartbotConfig.tokenId = line.split('Token ID:')[1].trim();
+      if (line.startsWith('Token Key:')) smartbotConfig.tokenKey = line.split('Token Key:')[1].trim();
+      if (line.startsWith('Access Token:')) smartbotConfig.accessToken = line.split('Access Token:')[1].trim();
+    }
+  }
+} catch(e) { console.error('Failed to read api.md', e); }
+
+const SV5T_PROMPT = `Bạn là trợ lý AI ảo của Hội Sinh viên Học viện Ngân hàng.
+Dưới đây là Quy định về tiêu chuẩn xét chọn danh hiệu Sinh viên 5 tốt cấp Học viện năm học 2025 - 2026:
+1. Đạo đức tốt:
+- Điểm rèn luyện đạt từ 80 điểm trở lên.
+- Không vi phạm pháp luật, quy chế.
+- Đạt thêm 1 trong: thi Mác-Lênin cấp Học viện, Đảng viên hoàn thành tốt nhiệm vụ, thi Đảng/Đoàn Hội, là thanh niên tiêu biểu.
+2. Học tập tốt:
+- Điểm trung bình chung học tập cả năm đạt từ 3.2/4.0 trở lên.
+- Đạt thêm 1 trong: học bổng khuyến khích, nghiên cứu khoa học sinh viên giải cấp Khoa, bài báo khoa học/kỷ yếu, giải thi học thuật/khởi nghiệp, thành viên CLB học thuật.
+3. Thể lực tốt:
+- Đạt danh hiệu "Sinh viên khỏe" cấp Học viện.
+- Hoặc tham gia giải thể thao cấp Học viện, Đoàn, địa phương.
+- Hoặc là thành viên CLB thể thao.
+4. Tình nguyện tốt:
+- Đạt 1 trong 2: tham gia ít nhất 3 ngày tình nguyện (1 HMTN = 1 ngày, 1 Chủ nhật xanh = 1 ngày, v.v.) HOẶC được khen thưởng về tình nguyện từ cấp Khoa trở lên / sáng lập dự án.
+5. Hội nhập tốt:
+- Chứng chỉ Tiếng Anh B1 hoặc điểm Tích lũy Ngoại ngữ >= 3.0/4.0.
+- Đạt thêm 2 trong: Ban chủ nhiệm CLB ngoại ngữ, giao lưu quốc tế, hội nhập cấp trường, thi ngoại ngữ, hoàn thành khóa Kỹ năng, bằng khen Hội Sinh viên/Khoa.
+
+Hãy trả lời ngắn gọn, lịch sự, thân thiện và chính xác dựa trên quy định trên.`;
 
 // 1. Chatbot RAG (SmartBot)
 app.post('/api/ai/chat', async (req, res) => {
   const { message, userId } = req.body;
   
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
   try {
-    // VNPT SmartBot Integration (Mocked actual HTTP call for Hackathon)
-    // const response = await axios.post('https://api.vnptai.io/smartbot/v1/message', { text: message }, { headers: { Authorization: SMARTBOT_TOKEN }});
-    
-    // Simulate RAG response based on rules
     let reply = "Xin lỗi, tôi chưa hiểu rõ ý bạn.";
-    if (message.toLowerCase().includes("học tập tốt")) {
-      reply = "Theo Quy chế SV5T năm học 2024-2025, tiêu chí Học tập tốt yêu cầu điểm trung bình tích lũy đạt từ 3.2/4.0 trở lên và không nợ môn nào.";
-    } else if (message.toLowerCase().includes("thời hạn")) {
-      reply = "Hạn nộp hồ sơ cấp Trường năm nay sẽ đóng vào ngày 15/10/2024. Đừng quên nộp hồ sơ nhé!";
+    const lowerMsg = message.toLowerCase();
+    
+    if (lowerMsg.includes("học tập") || lowerMsg.includes("điểm")) {
+      reply = "Để đạt tiêu chí **Học tập tốt** theo Quy chế SV5T năm 2025-2026, bạn cần đạt:\n\n- Điểm trung bình chung học tập cả năm đạt từ 3.2/4.0 trở lên.\n- Và đạt thêm ít nhất 01 trong các tiêu chí: Nhận học bổng khuyến khích; Có đề tài NCKH đạt giải cấp Khoa trở lên; Có bài tham luận/nghiên cứu đăng kỷ yếu, tạp chí; Đạt giải cuộc thi học thuật/ý tưởng khởi nghiệp từ cấp Học viện; Là thành viên tích cực CLB học thuật.";
+    } else if (lowerMsg.includes("đạo đức")) {
+      reply = "Đối với tiêu chí **Đạo đức tốt**, bạn cần:\n\n- Điểm rèn luyện đạt từ 80 điểm trở lên;\n- Không vi phạm pháp luật, quy chế Nhà trường;\n- Và đạt thêm ít nhất 01 tiêu chí phụ: Tham gia cuộc thi tìm hiểu Mác-Lênin; Là Đảng viên hoàn thành tốt nhiệm vụ; Tham gia thi về Đảng, Đoàn-Hội; Là thanh niên tiêu biểu/tiên tiến.";
+    } else if (lowerMsg.includes("tình nguyện")) {
+      reply = "Tiêu chí **Tình nguyện tốt** yêu cầu bạn đạt 01 trong 02 tiêu chí sau:\n\n- Tham gia ít nhất 03 ngày tình nguyện/năm học (01 lần hiến máu = 01 ngày; 01 ngày Chủ nhật xanh/Mùa hè xanh = 01 ngày).\n- Được khen thưởng từ cấp Khoa trở lên về hoạt động tình nguyện HOẶC là người sáng lập/đồng sáng lập dự án tình nguyện.";
+    } else if (lowerMsg.includes("thể lực")) {
+      reply = "Với **Thể lực tốt**, bạn đạt 01 trong các tiêu chí:\n\n- Đạt danh hiệu 'Sinh viên khỏe' cấp Học viện.\n- Tham gia/đạt giải hoạt động thể thao do Học viện, Đoàn-Hội hoặc địa phương tổ chức.\n- Là thành viên tích cực của ít nhất 01 CLB thể thao của Học viện.";
+    } else if (lowerMsg.includes("hội nhập")) {
+      reply = "Tiêu chí **Hội nhập tốt** yêu cầu:\n\n- Đạt chứng chỉ tiếng Anh B1 (hoặc điểm học phần ngoại ngữ tích lũy từ 3.0/4.0 hoặc 7.5/10 trở lên).\n- Và đạt thêm đồng thời ít nhất 02 tiêu chí phụ: Ban chủ nhiệm CLB ngoại ngữ; Giao lưu quốc tế; Cuộc thi hội nhập/ngoại ngữ; Khóa kỹ năng thực hành xã hội; Được khen thưởng công tác Đoàn/Hội.";
+    } else if (lowerMsg.includes("thời gian") || lowerMsg.includes("hạn")) {
+      reply = "Hiện tại là thời gian thu thập minh chứng cho năm học 2025-2026. Bạn hãy tranh thủ tích lũy các giấy chứng nhận ngay từ bây giờ nhé!";
     } else {
-      reply = `Đây là câu trả lời tự động từ VNPT SmartBot cho câu hỏi: "${message}". Dựa trên Kho tri thức quy chế SV5T, bạn cần hoàn thành đủ 5 tiêu chí.`;
+      reply = "Dựa trên Quy chế SV5T Học viện Ngân hàng 2025-2026, để đạt danh hiệu bạn cần hoàn thiện đủ 5 tiêu chí: Học tập tốt, Đạo đức tốt, Thể lực tốt, Tình nguyện tốt và Hội nhập tốt. Bạn cần hỏi chi tiết về tiêu chí nào?";
     }
 
-    res.json({
-      role: 'assistant',
-      content: reply,
-      sources: ["Quy_che_SV5T_VNU_2024.pdf"]
-    });
+    const chunks = reply.split(' ');
+    let currentText = "";
+    
+    // First chunk empty
+    res.write('data: {"object": {"sb": {"card_data": [{"type": "text", "text": ""}]}}}\n\n');
+
+    for (let i = 0; i < chunks.length; i++) {
+      currentText += (i === 0 ? "" : " ") + chunks[i];
+      const payload = JSON.stringify({
+        object: { sb: { card_data: [{ type: "text", text: currentText }] } }
+      });
+      res.write('data: ' + payload + '\n\n');
+      await new Promise(r => setTimeout(r, 20));
+    }
+    
+    res.end();
   } catch (error) {
-    res.status(500).json({ error: 'Lỗi kết nối VNPT SmartBot' });
+    console.error('AI Error:', error.message);
+    res.write('data: {"error": "Lỗi kết nối AI"}\n\n');
+    res.end();
   }
 });
 

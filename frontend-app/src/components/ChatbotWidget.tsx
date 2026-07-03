@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import api from '../services/api';
 import { X, Send, Bot, User, Loader2 } from 'lucide-react';
 
 interface Message {
@@ -30,21 +29,79 @@ export default function ChatbotWidget({ onClose }: { onClose: () => void }) {
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
     const userMsg: Message = { role: 'user', content: text };
-    setMessages(prev => [...prev, userMsg]);
+    
+    // Add user message and a placeholder for assistant message
+    setMessages(prev => [...prev, userMsg, { role: 'assistant', content: '' }]);
     setInput('');
     setLoading(true);
+    
     try {
-      const res = await api.post('/ai/chat', { message: text });
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: res.data.content,
-        sources: res.data.sources,
-      }]);
-    } catch {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Xin lỗi, tôi đang gặp sự cố kết nối. Vui lòng thử lại sau.',
-      }]);
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ message: text })
+      });
+
+      if (!response.body) throw new Error("No response body");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let buffer = "";
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        if (value) {
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          // Keep the last partial line in the buffer
+          buffer = lines.pop() || "";
+          
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              const dataStr = line.substring(line.indexOf(':') + 1).trim();
+              if (!dataStr) continue;
+              try {
+                const data = JSON.parse(dataStr);
+                if (data.error) {
+                  setMessages(prev => {
+                    const newMsgs = [...prev];
+                    newMsgs[newMsgs.length - 1].content = data.error;
+                    return newMsgs;
+                  });
+                  break;
+                }
+                
+                // Parse VNPT response format
+                if (data.object && data.object.sb && data.object.sb.card_data) {
+                  const cards = data.object.sb.card_data;
+                  const textCard = cards.find((c: any) => c.type === 'text');
+                  if (textCard && textCard.text) {
+                    setMessages(prev => {
+                      const newMsgs = [...prev];
+                      newMsgs[newMsgs.length - 1].content = textCard.text;
+                      return newMsgs;
+                    });
+                  }
+                }
+              } catch (e) {
+                // Ignore parse errors for incomplete chunks
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      setMessages(prev => {
+        const newMsgs = [...prev];
+        newMsgs[newMsgs.length - 1].content = 'Xin lỗi, tôi đang gặp sự cố kết nối. Vui lòng thử lại sau.';
+        return newMsgs;
+      });
     } finally {
       setLoading(false);
     }

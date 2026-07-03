@@ -5,13 +5,13 @@ import { CheckCircle, XCircle, ArrowLeft, UploadCloud, FileText, Search, Filter,
 import { useOutletContext } from 'react-router-dom';
 
 const FLOW_STEPS = [
-  { key: 'DANG_TAO', label: 'Thu thập Minh chứng', color: 'bg-slate-200 text-slate-500', active: 'bg-blue-600 text-white' },
-  { key: 'CHO_DUYET_TRUONG', label: 'Chờ cấp Trường', color: 'bg-slate-200 text-slate-500', active: 'bg-amber-500 text-white' },
-  { key: 'DAT_TRUONG', label: 'Đạt cấp Trường', color: 'bg-slate-200 text-slate-500', active: 'bg-emerald-500 text-white' },
-  { key: 'CHO_DUYET_TINH', label: 'Chờ cấp Tỉnh', color: 'bg-slate-200 text-slate-500', active: 'bg-blue-500 text-white' },
-  { key: 'DAT_TINH', label: 'Đạt cấp Tỉnh', color: 'bg-slate-200 text-slate-500', active: 'bg-indigo-500 text-white' },
-  { key: 'CHO_DUYET_TW', label: 'Chờ Trung ương', color: 'bg-slate-200 text-slate-500', active: 'bg-purple-500 text-white' },
-  { key: 'DAT_SV5T', label: 'Đạt SV5T', color: 'bg-slate-200 text-slate-500', active: 'bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)]' },
+  { key: 'DANG_TAO', label: 'Thu thập', fullLabel: 'Thu thập Minh chứng', color: 'bg-slate-200 text-slate-500', active: 'bg-blue-600 text-white' },
+  { key: 'CHO_DUYET_TRUONG', label: 'Cấp Trường', fullLabel: 'Chờ duyệt cấp Trường', color: 'bg-slate-200 text-slate-500', active: 'bg-amber-500 text-white' },
+  { key: 'DAT_TRUONG', label: 'Đạt Trường', fullLabel: 'Đạt cấp Trường', color: 'bg-slate-200 text-slate-500', active: 'bg-emerald-500 text-white' },
+  { key: 'CHO_DUYET_TINH', label: 'Cấp Tỉnh', fullLabel: 'Chờ duyệt cấp Tỉnh', color: 'bg-slate-200 text-slate-500', active: 'bg-blue-500 text-white' },
+  { key: 'DAT_TINH', label: 'Đạt Tỉnh', fullLabel: 'Đạt cấp Tỉnh', color: 'bg-slate-200 text-slate-500', active: 'bg-indigo-500 text-white' },
+  { key: 'CHO_DUYET_TW', label: 'Cấp TW', fullLabel: 'Chờ duyệt cấp Trung ương', color: 'bg-slate-200 text-slate-500', active: 'bg-purple-500 text-white' },
+  { key: 'DAT_SV5T', label: 'Đạt SV5T', fullLabel: 'Đạt danh hiệu SV5T', color: 'bg-slate-200 text-slate-500', active: 'bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)]' },
 ];
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
@@ -225,7 +225,7 @@ export default function ApplicationPage() {
           </div>
 
           {/* Premium Timeline Stepper */}
-          <div className="mt-8 mb-4 relative z-10 px-4 hidden sm:block">
+          <div className="mt-12 mb-8 relative z-10 px-2 sm:px-4 hidden sm:block">
             <div className="flex items-center justify-between relative">
               <div className="absolute top-1/2 left-0 right-0 h-1.5 bg-slate-100 -z-10 -translate-y-1/2 rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-1000 ease-in-out" style={{ width: `${(currentStepIndex / (FLOW_STEPS.length - 1)) * 100}%` }}></div>
@@ -234,11 +234,17 @@ export default function ApplicationPage() {
                 const isCompleted = idx <= currentStepIndex;
                 const isCurrent = idx === currentStepIndex;
                 return (
-                  <div key={step.key} className="flex flex-col items-center gap-2 relative group">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-500 ${isCompleted ? step.active : step.color} ${isCurrent ? 'ring-4 ring-indigo-500/20 scale-125' : ''}`}>
-                      {isCompleted ? <CheckCircle size={16} /> : (idx + 1)}
+                  <div key={step.key} className="flex flex-col items-center relative group cursor-default">
+                    <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm transition-all duration-500 shadow-sm ${isCompleted ? step.active : step.color} ${isCurrent ? 'ring-4 ring-indigo-500/30 scale-110 shadow-indigo-500/40' : 'border-2 border-white'}`}>
+                      {isCompleted ? <CheckCircle size={18} /> : (idx + 1)}
                     </div>
-                    <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider absolute -bottom-6 w-max text-center transition-colors ${isCurrent ? 'text-indigo-600' : isCompleted ? 'text-slate-700' : 'text-slate-400'}`}>
+                    {/* Tooltip for full label */}
+                    <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[11px] py-1 px-2.5 rounded-lg whitespace-nowrap pointer-events-none z-20">
+                      {step.fullLabel}
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                    </div>
+                    {/* Wrapped short label */}
+                    <span className={`mt-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wide w-16 sm:w-20 text-center leading-tight transition-colors ${isCurrent ? 'text-indigo-600' : isCompleted ? 'text-slate-700' : 'text-slate-400'}`}>
                       {step.label}
                     </span>
                   </div>
@@ -289,8 +295,19 @@ export default function ApplicationPage() {
                       </div>
                       <div className="pl-13 ml-13">
                         <p className="text-sm text-slate-500 mb-3 font-medium">{tc.mo_ta}</p>
-                        <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 inline-block">
-                          <p className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1.5"><ShieldCheck size={14} className="text-indigo-500"/> Điều kiện: cần {reqCount} minh chứng</p>
+                        <div className="bg-gradient-to-r from-slate-50 to-indigo-50/30 border border-indigo-100/60 rounded-xl p-4 w-full xl:w-4/5 shadow-sm">
+                          <p className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-2 flex items-center gap-1.5"><ShieldCheck size={16} className="text-indigo-500"/> Điều kiện xét duyệt (Quy chế 2025-2026)</p>
+                          <p className="text-[13px] md:text-sm font-medium text-slate-700 ml-5 leading-relaxed whitespace-pre-line">
+                            {(() => {
+                              const name = tc.ten_tieu_chi || '';
+                              if (name.includes('Học tập')) return '- Điểm trung bình chung học tập cả năm đạt từ 3.2/4.0 trở lên.\n- Sinh viên phải đạt thêm ít nhất 01 trong các tiêu chí sau: Nhận học bổng khuyến khích học tập; Có đề tài NCKH đạt giải cấp Khoa trở lên; Có bài tham luận/nghiên cứu được đăng kỷ yếu, tạp chí; Đạt giải cuộc thi học thuật/khởi nghiệp/sáng tạo từ cấp Học viện; Là thành viên tích cực CLB học thuật.';
+                              if (name.includes('Đạo đức')) return '- Điểm rèn luyện đạt từ 80 điểm trở lên;\n- Không vi phạm pháp luật, quy chế của Nhà trường;\n- Đạt thêm ít nhất 01 trong các tiêu chí: Tham gia cuộc thi tìm hiểu Mác-Lênin; Là Đảng viên hoàn thành tốt nhiệm vụ; Tham gia thi về Đảng, Đoàn-Hội; Là thanh niên tiêu biểu/tiên tiến.';
+                              if (name.includes('Thể lực')) return 'Sinh viên đạt 01 trong các tiêu chí sau:\n- Đạt danh hiệu "Sinh viên khỏe" từ cấp Học viện trở lên.\n- Tham gia và đạt giải hoặc thi đấu chính thức tại hoạt động thể thao do Học viện, Đoàn - Hội hoặc địa phương tổ chức.\n- Là thành viên tích cực của ít nhất 01 CLB thể thao của Học viện.';
+                              if (name.includes('Tình nguyện')) return 'Sinh viên đạt 01 trong 02 tiêu chí sau:\n- Tham gia ít nhất 03 ngày tình nguyện/năm học (01 lần hiến máu = 01 ngày; 01 ngày Chủ nhật xanh/Mùa hè xanh = 01 ngày).\n- Được khen thưởng từ cấp Khoa trở lên về hoạt động tình nguyện HOẶC là người sáng lập/đồng sáng lập dự án tình nguyện thiết thực.';
+                              if (name.includes('Hội nhập')) return '- Đạt chứng chỉ tiếng Anh B1 (hoặc tương đương); hoặc điểm học phần ngoại ngữ tích lũy đạt từ 3.0/4.0 hoặc 7.5/10 trở lên.\n- Đạt thêm đồng thời ít nhất 02 tiêu chí khác nhau: Ban chủ nhiệm CLB ngoại ngữ; Tham gia hoạt động giao lưu quốc tế; Tham gia cuộc thi hội nhập/ngoại ngữ; Hoàn thành khóa trang bị kỹ năng THXH; Được khen thưởng công tác Đoàn/Hội/phong trào.';
+                              return `Cần hoàn thành tối thiểu ${reqCount} minh chứng hợp lệ.`;
+                            })()}
+                          </p>
                         </div>
                         
                         <div className="mt-4 flex items-center gap-3">
