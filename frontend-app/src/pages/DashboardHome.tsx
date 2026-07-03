@@ -109,8 +109,9 @@ export default function DashboardHome() {
                 const progress = CRITERIA_NAMES.map(name => {
                   const tc = res.data.quy_che.tieu_chis.find((t: any) => t.ten_tieu_chi.includes(name.split(' ')[0]));
                   if (tc) {
-                    const hasProof = userProofs.some((p: any) => p.tieu_chi_id === tc.id);
-                    return hasProof ? 100 : 0;
+                    const proofCount = userProofs.filter((p: any) => p.tieu_chi_id === tc.id).length;
+                    const req = tc.so_luong_yeu_cau || 1;
+                    return Math.min(100, Math.round((proofCount / req) * 100));
                   }
                   return 0;
                 });
@@ -138,11 +139,11 @@ export default function DashboardHome() {
   const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
     DANG_TAO: { label: 'Đang tạo hồ sơ', bg: 'bg-slate-100', text: 'text-slate-700' },
     CHO_DUYET_TRUONG: { label: 'Chờ duyệt cấp Trường', bg: 'bg-yellow-100', text: 'text-yellow-700' },
-    DAT_TRUONG: { label: 'Đạt cấp Trường', bg: 'bg-green-100', text: 'text-green-700' },
+    DAT_TRUONG: { label: 'SV5T cấp Trường', bg: 'bg-green-100', text: 'text-green-700' },
     CHO_DUYET_TINH: { label: 'Chờ duyệt cấp Tỉnh', bg: 'bg-blue-100', text: 'text-blue-700' },
-    DAT_TINH: { label: 'Đạt cấp Tỉnh', bg: 'bg-indigo-100', text: 'text-indigo-700' },
+    DAT_TINH: { label: 'SV5T cấp Tỉnh', bg: 'bg-indigo-100', text: 'text-indigo-700' },
     CHO_DUYET_TW: { label: 'Chờ duyệt Trung ương', bg: 'bg-purple-100', text: 'text-purple-700' },
-    DAT_SV5T: { label: 'Đạt danh hiệu SV5T', bg: 'bg-amber-100', text: 'text-amber-700' },
+    DAT_SV5T: { label: 'SV5T cấp Trung ương', bg: 'bg-amber-100', text: 'text-amber-700' },
     BI_TU_CHOI: { label: 'Bị từ chối', bg: 'bg-red-100', text: 'text-red-700' },
   };
 

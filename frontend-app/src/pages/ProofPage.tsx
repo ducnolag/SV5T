@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { UploadCloud, CheckCircle, FileText, X, Sparkles, ShieldAlert, Building2, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
+import { UploadCloud, CheckCircle, FileText, X, Sparkles, ShieldAlert, Building2, ChevronLeft, AlertTriangle, ChevronRight as ChevronRightIcon } from 'lucide-react';
 
 interface Proof {
   id: string;
@@ -55,7 +55,8 @@ export default function ProofPage() {
       ]);
       setProofs(pRes.data || []);
       const tcs = (qcRes.data || []).flatMap((qc: any) => qc.tieu_chis || []);
-      setTieuChis(tcs);
+      const uniqueTcs = Array.from(new Map(tcs.map((t: any) => [t.ten_tieu_chi.trim().toLowerCase(), t])).values());
+      setTieuChis(uniqueTcs);
     } catch {
       setProofs([]);
     } finally {
@@ -98,7 +99,17 @@ export default function ProofPage() {
             const matched = tieuChis.find(t => t.ten_tieu_chi.trim() === res.data.suggestedCriteria.trim());
             if (matched) matchedTieuChi = matched.id;
           }
-          return { ...p, ocrResult: res.data, ocrLoading: false, selectedTieuChi: matchedTieuChi };
+          
+          const safeName = files[0].name.replace(/[^a-zA-Z0-9.]/g, '_');
+          const isDuplicate = proofs.some(proof => proof.file_url.includes(safeName));
+          
+          const finalOcr = { ...res.data };
+          if (isDuplicate) {
+             finalOcr.isValid = false;
+             finalOcr.message = `Phát hiện ảnh trùng lặp! Tệp "${files[0].name}" đã được nộp trong hồ sơ của bạn.`;
+          }
+
+          return { ...p, ocrResult: finalOcr, ocrLoading: false, selectedTieuChi: matchedTieuChi };
         }
         return p;
       }));
@@ -119,6 +130,14 @@ export default function ProofPage() {
         if (pending.selectedTieuChi) formData.append('tieu_chi_id', pending.selectedTieuChi);
         if (pending.tenMinhChung) formData.append('ten_minh_chung', pending.tenMinhChung);
         if (pending.ocrResult?.isValid) formData.append('ocr_valid', 'true');
+        
+        if (pending.ocrResult?.suggestedCriteria && pending.selectedTieuChi) {
+           const selectedTc = tieuChis.find(t => t.id === pending.selectedTieuChi);
+           if (selectedTc && selectedTc.ten_tieu_chi.trim() !== pending.ocrResult.suggestedCriteria.trim()) {
+               formData.append('ai_mismatch', 'true');
+               formData.append('ai_suggestion', pending.ocrResult.suggestedCriteria);
+           }
+        }
         
         await api.post('/proofs/upload', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
@@ -233,6 +252,11 @@ export default function ProofPage() {
                             <option value="">-- Chọn tiêu chí phân loại --</option>
                             {tieuChis.map(t => <option key={t.id} value={t.id}>{t.ten_tieu_chi}</option>)}
                           </select>
+                          {pending.ocrResult?.suggestedCriteria && pending.selectedTieuChi && tieuChis.find(t => t.id === pending.selectedTieuChi)?.ten_tieu_chi.trim() !== pending.ocrResult.suggestedCriteria.trim() && (
+                            <p className="mt-2 text-xs font-bold text-amber-600 flex items-center gap-1.5 bg-amber-50 p-2 rounded-lg border border-amber-100">
+                              <AlertTriangle size={14} /> AI khuyến nghị: {pending.ocrResult.suggestedCriteria}. Bạn đang chọn sai loại minh chứng!
+                            </p>
+                          )}
                         </div>
                       </div>
 

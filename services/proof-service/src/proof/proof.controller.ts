@@ -17,6 +17,8 @@ export class ProofController {
     @Body('ho_so_id') hoSoId: string,
     @Body('ocr_valid') ocrValid: string,
     @Body('ten_minh_chung') tenMinhChung: string,
+    @Body('ai_mismatch') aiMismatch: string,
+    @Body('ai_suggestion') aiSuggestion: string,
     @Request() req: any
   ) {
     if (!files || files.length === 0) {
@@ -25,7 +27,7 @@ export class ProofController {
     const tieuChiIdOrNull = tieuChiId && tieuChiId.length > 0 ? tieuChiId : null;
     const hoSoIdOrUndefined = hoSoId && hoSoId.length > 0 ? hoSoId : undefined;
     const tenMinhChungOrNull = tenMinhChung && tenMinhChung.length > 0 ? tenMinhChung : null;
-    return this.proofService.uploadProof(req.user.id, tieuChiIdOrNull, files, hoSoIdOrUndefined, ocrValid, tenMinhChungOrNull);
+    return this.proofService.uploadProof(req.user.id, tieuChiIdOrNull, files, hoSoIdOrUndefined, ocrValid, tenMinhChungOrNull, aiMismatch, aiSuggestion);
   }
 
   @Get('me')

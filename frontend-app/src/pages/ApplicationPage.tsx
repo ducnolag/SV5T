@@ -1,32 +1,51 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { CheckCircle, XCircle, ArrowLeft, UploadCloud, FileText, Search, Filter, Sparkles, Calendar, ShieldCheck, Target, AlertTriangle, X, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
+import { CheckCircle, XCircle, UploadCloud, FileText, Search, Filter, Sparkles, Calendar, ShieldCheck, Target, AlertTriangle, X, ChevronLeft, ArrowUpCircle, ChevronRight as ChevronRightIcon, ShieldAlert } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 
 const FLOW_STEPS = [
-  { key: 'DANG_TAO', label: 'Thu thập', fullLabel: 'Thu thập Minh chứng', color: 'bg-slate-200 text-slate-500', active: 'bg-blue-600 text-white' },
-  { key: 'CHO_DUYET_TRUONG', label: 'Cấp Trường', fullLabel: 'Chờ duyệt cấp Trường', color: 'bg-slate-200 text-slate-500', active: 'bg-amber-500 text-white' },
-  { key: 'DAT_TRUONG', label: 'Đạt Trường', fullLabel: 'Đạt cấp Trường', color: 'bg-slate-200 text-slate-500', active: 'bg-emerald-500 text-white' },
-  { key: 'CHO_DUYET_TINH', label: 'Cấp Tỉnh', fullLabel: 'Chờ duyệt cấp Tỉnh', color: 'bg-slate-200 text-slate-500', active: 'bg-blue-500 text-white' },
-  { key: 'DAT_TINH', label: 'Đạt Tỉnh', fullLabel: 'Đạt cấp Tỉnh', color: 'bg-slate-200 text-slate-500', active: 'bg-indigo-500 text-white' },
-  { key: 'CHO_DUYET_TW', label: 'Cấp TW', fullLabel: 'Chờ duyệt cấp Trung ương', color: 'bg-slate-200 text-slate-500', active: 'bg-purple-500 text-white' },
-  { key: 'DAT_SV5T', label: 'Đạt SV5T', fullLabel: 'Đạt danh hiệu SV5T', color: 'bg-slate-200 text-slate-500', active: 'bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)]' },
+  { key: 'DANG_TAO', label: 'Tạo hồ sơ', fullLabel: 'Đang tạo hồ sơ', color: 'bg-slate-200 text-slate-500', active: 'bg-blue-500 text-white' },
+  { key: 'CHO_DUYET_TRUONG', label: 'Chờ Trường', fullLabel: 'Chờ duyệt cấp Trường', color: 'bg-slate-200 text-slate-500', active: 'bg-indigo-500 text-white' },
+  { key: 'DAT_TRUONG', label: 'SV5T Trường', fullLabel: 'SV5T cấp Trường', color: 'bg-slate-200 text-slate-500', active: 'bg-emerald-500 text-white' },
+  { key: 'CHO_DUYET_TINH', label: 'Chờ Tỉnh', fullLabel: 'Chờ duyệt cấp Tỉnh', color: 'bg-slate-200 text-slate-500', active: 'bg-purple-500 text-white' },
+  { key: 'DAT_TINH', label: 'SV5T Tỉnh', fullLabel: 'SV5T cấp Tỉnh', color: 'bg-slate-200 text-slate-500', active: 'bg-emerald-500 text-white' },
+  { key: 'CHO_DUYET_TW', label: 'Chờ TW', fullLabel: 'Chờ duyệt cấp Trung ương', color: 'bg-slate-200 text-slate-500', active: 'bg-orange-500 text-white' },
+  { key: 'DAT_SV5T', label: 'SV5T TW', fullLabel: 'SV5T cấp Trung ương', color: 'bg-slate-200 text-slate-500', active: 'bg-amber-500 text-white' },
 ];
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  DANG_TAO: { label: 'Đang chuẩn bị', cls: 'bg-slate-100 text-slate-700 border-slate-200' },
-  CHO_DUYET_TRUONG: { label: 'Chờ Trường', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
-  DAT_TRUONG: { label: 'Đạt Trường', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  CHO_DUYET_TINH: { label: 'Chờ Tỉnh', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
-  DAT_TINH: { label: 'Đạt Tỉnh', cls: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-  CHO_DUYET_TW: { label: 'Chờ TW', cls: 'bg-purple-50 text-purple-700 border-purple-200' },
-  DAT_SV5T: { label: '🏆 Đạt SV5T', cls: 'bg-amber-100 text-amber-800 border-amber-300 font-black' },
+  DANG_TAO: { label: 'Đang soạn', cls: 'bg-slate-50 text-slate-600 border-slate-200' },
+  CHO_DUYET_TRUONG: { label: 'Chờ duyệt Trường', cls: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  DAT_TRUONG: { label: 'SV5T cấp Trường', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  CHO_DUYET_TINH: { label: 'Chờ duyệt Tỉnh', cls: 'bg-purple-50 text-purple-700 border-purple-200' },
+  DAT_TINH: { label: 'SV5T cấp Tỉnh', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  CHO_DUYET_TW: { label: 'Chờ duyệt TW', cls: 'bg-orange-50 text-orange-700 border-orange-200' },
+  DAT_SV5T: { label: 'SV5T cấp TW', cls: 'bg-amber-50 text-amber-700 border-amber-300 shadow-sm' },
   BI_TU_CHOI: { label: 'Bị từ chối', cls: 'bg-rose-50 text-rose-700 border-rose-200' },
 };
 
+const extractFileHash = (fileUrlString: string) => {
+  try {
+    const urls = JSON.parse(fileUrlString);
+    if (Array.isArray(urls) && urls.length > 0) {
+      const url = urls[0];
+      const match = url.match(/__([a-f0-9]{32})__/);
+      if (match) return match[1];
+      
+      const filename = url.split('/').pop() || '';
+      const parts = filename.split('-');
+      if (parts.length > 1 && !isNaN(Number(parts[0]))) {
+         return parts.slice(1).join('-'); // e.g. "giay_khen.jpg"
+      }
+      return filename || Math.random().toString();
+    }
+  } catch {}
+  return Math.random().toString();
+};
+
 export default function ApplicationPage() {
-  const { isRole } = useAuth();
+  const { isRole, user } = useAuth();
   const { refreshTrigger } = useOutletContext<{ refreshTrigger: number }>();
   const [myApps, setMyApps] = useState<any[]>([]);
   const [pendingApps, setPendingApps] = useState<any[]>([]);
@@ -35,11 +54,16 @@ export default function ApplicationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [appDetail, setAppDetail] = useState<any>(null);
-  const view = isRole('SINH_VIEN') ? 'my' : 'pending';
   const [searchQuery, setSearchQuery] = useState('');
   const [userProofs, setUserProofs] = useState<any[]>([]);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
+  const [toastMessage, setToastMessage] = useState<{type: 'success'|'error', text: string} | null>(null);
+
+  const showToast = (text: string, type: 'success'|'error' = 'success') => {
+    setToastMessage({ type, text });
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   const openPreview = (fileUrlString: string) => {
     try {
@@ -91,7 +115,20 @@ export default function ApplicationPage() {
       fetchAll();
       if (selectedAppId === id) fetchDetail(id);
     } catch (e: any) {
-      alert(e.response?.data?.message || 'Lỗi duyệt hồ sơ');
+      showToast(e.response?.data?.message || 'Lỗi duyệt hồ sơ', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEscalate = async (id: string) => {
+    setSubmitting(true);
+    try {
+      await api.post(`/applications/batch-escalate`, { appIds: [id] });
+      fetchAll();
+      showToast('Đã nộp lên tuyến trên thành công', 'success');
+    } catch (e: any) {
+      showToast(e.response?.data?.message || 'Lỗi nộp tuyến trên', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -124,24 +161,25 @@ export default function ApplicationPage() {
       fetchAll();
       setSelectedAppId(res.data.id);
     } catch (e: any) {
-      alert(e.response?.data?.message || 'Lỗi tạo hồ sơ');
+      showToast(e.response?.data?.message || 'Lỗi tạo hồ sơ', 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleSubmit = async (id: string) => {
-    if (!confirm('Sau khi nộp, hồ sơ sẽ được gửi lên Cấp Trường để xét duyệt. Bạn có chắc chắn?')) return;
     setSubmitting(true);
     try {
-      // Lấy tất cả minh chứng hợp lệ (đã được AI xác nhận) của người dùng liên quan đến quy chế này
-      const validProofIds = userProofs.filter(p => appDetail.quy_che.tieu_chis.some((tc:any) => tc.id === p.tieu_chi_id) && (p.trang_thai === 'DA_XAC_THUC' || p.trang_thai === 'DA_DUYET' || (p.ai_xac_thuc_muc_do && p.ai_xac_thuc_muc_do >= 80))).map(p => p.id);
+      // Lấy tất cả minh chứng của người dùng đã được gắn vào các tiêu chí thuộc quy chế này (so sánh theo Tên tiêu chí để linh hoạt áp dụng nhiều cấp)
+      const validProofIds = userProofs.filter(p => 
+        appDetail.quy_che.tieu_chis.some((tc:any) => p.tieu_chi?.ten_tieu_chi?.trim().toLowerCase() === tc.ten_tieu_chi.trim().toLowerCase() || p.tieu_chi_id === tc.id)
+      ).map(p => p.id);
       await api.put(`/applications/${id}/submit`, { minh_chung_ids: validProofIds });
       fetchAll();
       fetchDetail(id); // Stay on page and update
-      alert('Nộp hồ sơ thành công!');
+      showToast('Nộp hồ sơ thành công!', 'success');
     } catch (e: any) {
-      alert(e.response?.data?.message || 'Lỗi nộp hồ sơ');
+      showToast(e.response?.data?.message || 'Lỗi nộp hồ sơ', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -152,22 +190,36 @@ export default function ApplicationPage() {
     a.nguoi_dung?.msv?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Logic tự động tìm quy chế đang mở mà SV chưa tham gia
+  // Logic tự động tìm quy chế đang mở mà SV chưa tham gia (và chỉ cho phép tự ứng cử ở cấp trường/cấp trực tiếp)
   const activeQuyChes = quyChes.filter(qc => {
-    // Nếu chưa có app nào với quy chế này, thì coi như "có thể tham gia"
-    return !myApps.some(app => app.quy_che?.id === qc.id);
+    const notJoined = !myApps.some(app => app.quy_che?.id === qc.id);
+    const isDirect = qc.don_vi_id === user?.don_vi_id;
+    return notJoined && isDirect;
   });
 
-  // --- DETAIL VIEW ---
+  const hasActiveApp = myApps.some(app => 
+    ['DANG_TAO', 'CHO_DUYET_TRUONG', 'CHO_DUYET_TINH', 'CHO_DUYET_TW'].includes(app.trang_thai)
+  );
+
   if (selectedAppId && appDetail) {
     const isDraft = appDetail.trang_thai === 'DANG_TAO' && !appDetail.khoa;
     let missingCount = 0;
     
-    appDetail.quy_che?.tieu_chis?.forEach((tc: any) => {
+    const deduplicatedTieuChis = Array.from(
+      new Map((appDetail.quy_che?.tieu_chis || []).map((tc: any) => [tc.ten_tieu_chi.trim().toLowerCase(), tc])).values()
+    );
+
+    const duplicateHashes = useMemo(() => {
+      if (!appDetail?.minh_chungs) return new Set();
+      const hashes = appDetail.minh_chungs.map((mc: any) => extractFileHash(mc.file_url));
+      return new Set(hashes.filter((h: string, i: number) => hashes.indexOf(h) !== i));
+    }, [appDetail]);
+
+    deduplicatedTieuChis.forEach((tc: any) => {
       const reqCount = tc.so_luong_yeu_cau || 1;
       const validCount = isDraft 
-        ? userProofs.filter(p => p.tieu_chi_id === tc.id).length
-        : (appDetail.minh_chungs || []).filter((p: any) => p.tieu_chi_id === tc.id).length;
+        ? userProofs.filter(p => p.tieu_chi?.ten_tieu_chi?.trim().toLowerCase() === tc.ten_tieu_chi.trim().toLowerCase() || p.tieu_chi_id === tc.id).length
+        : (appDetail.minh_chungs || []).filter((p: any) => p.tieu_chi?.ten_tieu_chi?.trim().toLowerCase() === tc.ten_tieu_chi.trim().toLowerCase() || p.tieu_chi_id === tc.id).length;
       if (validCount < reqCount) missingCount += (reqCount - validCount);
     });
 
@@ -176,12 +228,11 @@ export default function ApplicationPage() {
       : 0;
 
     return (
-      <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+      <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12 relative">
         <button onClick={() => setSelectedAppId(null)} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-medium transition-colors">
-          <ArrowLeft size={16} /> Quay lại Danh sách
+          <ChevronLeft size={20} /> Quay lại danh sách
         </button>
         
-        {/* Detail Header - Dashboard Style */}
         <div className="relative overflow-hidden bg-white/70 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-xl shadow-slate-200/50 p-8">
           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
           
@@ -196,7 +247,10 @@ export default function ApplicationPage() {
               </div>
               <h2 className="text-3xl font-black text-slate-800 tracking-tight">Dashboard Mục Tiêu SV5T</h2>
               <div className="flex items-center gap-4 text-sm font-medium text-slate-500 mt-2">
-                <span className="flex items-center gap-1.5"><Calendar size={16} className="text-indigo-500" /> Năm học {appDetail.quy_che?.nam_hoc}</span>
+                <span className="flex items-center gap-1.5">
+                  <Calendar size={16} className="text-indigo-500" /> 
+                  Hạn nộp: {appDetail.quy_che?.ngay_mo_cong ? new Date(appDetail.quy_che.ngay_mo_cong).toLocaleDateString('vi-VN') : '...'} - {appDetail.quy_che?.ngay_dong_cong ? new Date(appDetail.quy_che.ngay_dong_cong).toLocaleDateString('vi-VN') : '...'}
+                </span>
               </div>
             </div>
             
@@ -269,11 +323,11 @@ export default function ApplicationPage() {
           </div>
           
           <div className="grid gap-5">
-            {(appDetail.quy_che?.tieu_chis || []).map((tc: any) => {
+            {deduplicatedTieuChis.map((tc: any) => {
               const reqCount = tc.so_luong_yeu_cau || 1;
               const tcProofs = isDraft
-                ? userProofs.filter(p => p.tieu_chi_id === tc.id)
-                : (appDetail.minh_chungs || []).filter((p: any) => p.tieu_chi_id === tc.id);
+                ? userProofs.filter(p => p.tieu_chi?.ten_tieu_chi?.trim().toLowerCase() === tc.ten_tieu_chi.trim().toLowerCase() || p.tieu_chi_id === tc.id)
+                : (appDetail.minh_chungs || []).filter((p: any) => p.tieu_chi?.ten_tieu_chi?.trim().toLowerCase() === tc.ten_tieu_chi.trim().toLowerCase() || p.tieu_chi_id === tc.id);
               
               const isCompleted = tcProofs.length >= reqCount;
 
@@ -310,28 +364,50 @@ export default function ApplicationPage() {
                     <div className="w-full md:w-64 flex-shrink-0">
                       {tcProofs.length > 0 ? (
                         <div className="flex overflow-x-auto gap-3 h-32 pb-2 scrollbar-thin">
-                          {tcProofs.map((proof: any) => (
-                            <div key={proof.id} className="w-32 flex-shrink-0 bg-emerald-50 border border-emerald-100 rounded-xl p-1 relative group overflow-hidden h-full flex flex-col justify-center cursor-pointer" onClick={() => openPreview(proof.file_url)}>
-                              <div className="w-full h-full rounded-lg overflow-hidden relative bg-white border border-emerald-100/50">
-                                {(() => {
-                                  let urls: string[] = [];
-                                  try { urls = JSON.parse(proof.file_url); } catch { urls = [proof.file_url]; }
-                                  const firstUrl = urls[0];
-                                  const src = firstUrl?.startsWith('http') ? firstUrl : `http://localhost:3000${firstUrl?.startsWith('/') ? '' : '/'}${firstUrl}`;
-                                  return (
-                                    <>
-                                      <img src={src} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Minh chứng" />
-                                      {urls.length > 1 && (
-                                        <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm">
-                                          +{urls.length - 1}
-                                        </div>
-                                      )}
-                                    </>
-                                  );
-                                })()}
+                          {tcProofs.map((proof: any) => {
+                            const isDuplicate = duplicateHashes.has(extractFileHash(proof.file_url));
+                            const isAiWarning = isDuplicate || proof.trang_thai === 'CAN_KIEM_TRA' || (proof.ai_xac_thuc_muc_do != null && proof.ai_xac_thuc_muc_do < 80);
+                            return (
+                              <div key={proof.id} className={`w-32 flex-shrink-0 border rounded-xl p-1 relative group overflow-hidden h-full flex flex-col justify-center cursor-pointer ${isDuplicate ? 'bg-rose-100 border-rose-400' : isAiWarning ? 'bg-amber-50 border-amber-300' : 'bg-emerald-50 border-emerald-100'}`} onClick={() => openPreview(proof.file_url)}>
+                                {isStaff && isDuplicate && (
+                                  <div className="absolute top-1 left-1 z-20 bg-rose-600 text-white rounded-full p-0.5 shadow-md" title="Ảnh trùng lặp!">
+                                    <ShieldAlert size={12} />
+                                  </div>
+                                )}
+                                {isStaff && isAiWarning && !isDuplicate && (
+                                  <div className="absolute top-1 right-1 z-20 bg-amber-500 text-white rounded-full p-0.5 shadow-md" title="AI Cảnh Báo: Cần kiểm tra kỹ">
+                                    <AlertTriangle size={12} />
+                                  </div>
+                                )}
+                                <div className={`w-full h-full rounded-lg overflow-hidden relative bg-white border ${isDuplicate ? 'border-rose-400' : isAiWarning ? 'border-amber-200' : 'border-emerald-100/50'}`}>
+                                  {(() => {
+                                    let urls: string[] = [];
+                                    try { urls = JSON.parse(proof.file_url); } catch { urls = [proof.file_url]; }
+                                    if (urls.length === 0) return null;
+                                    const firstUrl = urls[0].startsWith('http') ? urls[0] : `http://localhost:3000${urls[0].startsWith('/') ? '' : '/'}${urls[0]}`;
+                                    
+                                    return (
+                                      <>
+                                        {firstUrl.match(/\.(pdf)$/i) ? (
+                                          <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-400">
+                                            <FileText size={24} />
+                                            <span className="text-[10px] font-bold mt-1">PDF</span>
+                                          </div>
+                                        ) : (
+                                          <img src={firstUrl} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" />
+                                        )}
+                                        {urls.length > 1 && (
+                                          <div className="absolute bottom-2 right-2 bg-slate-900/80 backdrop-blur text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow-sm z-20">
+                                            +{urls.length - 1}
+                                          </div>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       ) : isDraft ? (
                         <a href="/proofs" className="h-full min-h-[140px] w-full border-2 border-dashed border-slate-300 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/50 rounded-2xl flex flex-col items-center justify-center text-slate-500 hover:text-indigo-600 transition-all group">
@@ -398,9 +474,14 @@ export default function ApplicationPage() {
 
   // --- LIST VIEW ---
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12 relative">
+      {toastMessage && (
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-xl border shadow-xl flex items-center gap-3 animate-in slide-in-from-right-4 fade-in ${toastMessage.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+          <span className="font-bold">{toastMessage.text}</span>
+        </div>
+      )}
       {/* Dynamic Banner for active Applications (Only for Student) */}
-      {isSV && activeQuyChes.length > 0 && (
+      {isSV && activeQuyChes.length > 0 && !hasActiveApp && (
         <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-blue-700 rounded-[2rem] p-8 md:p-10 text-white shadow-xl shadow-indigo-500/20 group">
           <div className="absolute right-0 top-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 group-hover:opacity-10 transition-opacity"></div>
           <div className="relative z-10 md:flex items-center justify-between">
@@ -409,7 +490,7 @@ export default function ApplicationPage() {
                 <Sparkles size={14} /> Đợt xét duyệt đang mở
               </div>
               <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-3">Hành Trình Chinh Phục Danh Hiệu</h2>
-              <p className="text-indigo-100 font-medium leading-relaxed">Năm học {activeQuyChes[0]?.nam_hoc} đã chính thức khởi động. Bắt đầu thu thập minh chứng và hoàn thiện Dashboard tiêu chí của bạn ngay hôm nay!</p>
+              <p className="text-indigo-100 font-medium leading-relaxed">Đợt xét duyệt Sinh viên 5 Tốt đã chính thức khởi động (Hạn nộp: {activeQuyChes[0]?.ngay_mo_cong ? new Date(activeQuyChes[0].ngay_mo_cong).toLocaleDateString('vi-VN') : '...'} - {activeQuyChes[0]?.ngay_dong_cong ? new Date(activeQuyChes[0].ngay_dong_cong).toLocaleDateString('vi-VN') : '...'}). Bắt đầu thu thập minh chứng và hoàn thiện Dashboard tiêu chí của bạn ngay hôm nay!</p>
             </div>
             <button onClick={() => handleCreate(activeQuyChes[0].id)} disabled={submitting}
               className="px-8 py-4 bg-white text-indigo-700 rounded-2xl font-black text-lg shadow-xl shadow-black/10 hover:shadow-2xl hover:scale-105 hover:bg-slate-50 transition-all">
@@ -419,120 +500,142 @@ export default function ApplicationPage() {
         </div>
       )}
 
-      {/* Header Area */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mt-4">
-        <div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Quản lý Hồ Sơ</h2>
-          <p className="text-slate-500 font-medium mt-1">Theo dõi tiến độ hoàn thành các tiêu chí xét duyệt</p>
+      {/* My Apps section for anyone who has them */}
+      {myApps.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          {myApps.map(app => (
+            <div key={app.id} onClick={() => setSelectedAppId(app.id)} 
+              className="group cursor-pointer bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-200 transition-all duration-300 p-6 flex flex-col h-full relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 -z-0"></div>
+              
+              <div className="relative z-10 flex-1">
+                <div className="flex items-center gap-2 mb-4">
+                  {app.trang_thai !== 'DANG_TAO' && (
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${STATUS_BADGE[app.trang_thai]?.cls}`}>
+                      {STATUS_BADGE[app.trang_thai]?.label}
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-black text-xl text-slate-800 leading-snug mb-1 group-hover:text-indigo-600 transition-colors">
+                  Dashboard Mục Tiêu SV5T
+                </h3>
+                <div className="text-[11px] font-bold text-indigo-500 mb-1">
+                  Hạn nộp: {app.quy_che?.ngay_mo_cong ? new Date(app.quy_che.ngay_mo_cong).toLocaleDateString('vi-VN') : '...'} - {app.quy_che?.ngay_dong_cong ? new Date(app.quy_che.ngay_dong_cong).toLocaleDateString('vi-VN') : '...'}
+                </div>
+                <p className="text-sm text-slate-500 font-medium">{app.quy_che?.don_vi?.ten_don_vi}</p>
+              </div>
+              
+              <div className="relative z-10 mt-8 pt-5 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-indigo-600 font-bold text-sm flex items-center gap-2">
+                  Xem chi tiết <ChevronRightIcon size={16} />
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
-        
-        <div className="flex flex-col sm:flex-row gap-3">
-        </div>
-      </div>
+      )}
 
-      {loading ? (
-        <div className="flex justify-center py-20"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>
-      ) : view === 'pending' && isStaff ? (
-        /* ENTERPRISE DATA TABLE FOR STAFF */
-        <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/40 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between gap-4">
-            <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2"><Filter size={20} className="text-indigo-500"/> Danh sách chờ duyệt</h3>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input type="text" placeholder="Tìm tên hoặc MSV..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 w-full sm:w-64 font-medium transition-all" />
+      {isStaff && (
+        <>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mt-4">
+            <div>
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight">Quản lý Hồ Sơ</h2>
+              <p className="text-slate-500 font-medium mt-1">Theo dõi tiến độ hoàn thành các tiêu chí xét duyệt</p>
             </div>
           </div>
           
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[800px]">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-black text-slate-500 uppercase tracking-wider">
-                  <th className="py-4 px-6 whitespace-nowrap">Sinh viên</th>
-                  <th className="py-4 px-6 whitespace-nowrap">Tiến độ tiêu chí</th>
-                  <th className="py-4 px-6 whitespace-nowrap">Trạng thái hiện tại</th>
-                  <th className="py-4 px-6 text-right whitespace-nowrap">Hành động</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredPending.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="py-16 text-center text-slate-500 font-medium">Không tìm thấy hồ sơ nào chờ duyệt.</td>
-                  </tr>
-                ) : (
-                  filteredPending.map(app => (
-                    <tr key={app.id} className="hover:bg-indigo-50/30 transition-colors group">
-                      <td className="py-4 px-6">
-                        <p className="font-bold text-slate-800 text-sm">{app.nguoi_dung?.ho_ten}</p>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">{app.nguoi_dung?.msv} • {app.quy_che?.nam_hoc}</p>
-                      </td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-bold text-slate-700">{app.minh_chungs?.length || 0}/5</span>
-                          <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${((app.minh_chungs?.length || 0)/5)*100}%` }}></div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold border ${STATUS_BADGE[app.trang_thai]?.cls}`}>
-                          {STATUS_BADGE[app.trang_thai]?.label}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6 text-right">
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => setReviewAction({ id: app.id, action: 'REJECT' })} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors tooltip" title="Từ chối"><XCircle size={18} /></button>
-                          <button onClick={() => setReviewAction({ id: app.id, action: 'APPROVE' })} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors tooltip" title="Duyệt"><CheckCircle size={18} /></button>
-                          <button onClick={() => setSelectedAppId(app.id)} className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg transition-colors">Xem Dashboard</button>
-                        </div>
-                        <div className="group-hover:hidden text-xs text-slate-400 font-medium">Trượt để thao tác</div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        /* PREMIUM CARDS FOR STUDENT VIEW */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {myApps.length === 0 ? (
-            <div className="col-span-full text-center py-16 bg-white border border-slate-200 border-dashed rounded-[2rem] shadow-sm">
-              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Target size={32} className="text-slate-300" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-2">Chưa có mục tiêu</h3>
-              <p className="text-slate-500 font-medium max-w-md mx-auto">Bạn chưa tham gia đợt xét duyệt nào. Hãy theo dõi thông báo từ Hội Sinh viên để khởi tạo hồ sơ.</p>
-            </div>
+          {loading ? (
+            <div className="flex justify-center py-20"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>
           ) : (
-            myApps.map(app => (
-              <div key={app.id} onClick={() => setSelectedAppId(app.id)} 
-                className="group cursor-pointer bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-200 transition-all duration-300 p-6 flex flex-col h-full relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 -z-0"></div>
-                
-                <div className="relative z-10 flex-1">
-                  <div className="flex items-center gap-2 mb-4">
-                    {app.trang_thai !== 'DANG_TAO' && (
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${STATUS_BADGE[app.trang_thai]?.cls}`}>
-                        {STATUS_BADGE[app.trang_thai]?.label}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="font-black text-xl text-slate-800 leading-snug mb-1 group-hover:text-indigo-600 transition-colors">
-                    Dashboard Năm {app.quy_che?.nam_hoc}
-                  </h3>
-                  <p className="text-sm text-slate-500 font-medium">{app.quy_che?.don_vi?.ten_don_vi}</p>
-                </div>
-                
-                <div className="relative z-10 mt-8 pt-5 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-indigo-600 font-bold text-sm flex items-center gap-2">
-                    Xem chi tiết <ChevronRightIcon size={16} />
-                  </span>
+            <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/40 overflow-hidden">
+              <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between gap-4">
+                <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2"><Filter size={20} className="text-indigo-500"/> Danh sách chờ duyệt</h3>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input type="text" placeholder="Tìm tên hoặc MSV..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 w-full sm:w-64 font-medium transition-all" />
                 </div>
               </div>
-            ))
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[800px]">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-black text-slate-500 uppercase tracking-wider">
+                      <th className="py-4 px-6 whitespace-nowrap">Sinh viên</th>
+                      <th className="py-4 px-6 whitespace-nowrap">Tiến độ tiêu chí</th>
+                      <th className="py-4 px-6 whitespace-nowrap">Trạng thái hiện tại</th>
+                      <th className="py-4 px-6 text-right whitespace-nowrap">Hành động</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredPending.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-16 text-center text-slate-500 font-medium">Không tìm thấy hồ sơ nào chờ duyệt.</td>
+                      </tr>
+                    ) : (
+                      filteredPending.map(app => {
+                        const hasDuplicate = (() => {
+                          if (!app.minh_chungs) return false;
+                          const hashes = app.minh_chungs.map((mc: any) => extractFileHash(mc.file_url));
+                          return new Set(hashes).size !== hashes.length;
+                        })();
+                        const hasAiWarning = app.minh_chungs?.some((mc: any) => mc.trang_thai === 'CAN_KIEM_TRA' || (mc.ai_xac_thuc_muc_do != null && mc.ai_xac_thuc_muc_do < 80));
+                        return (
+                        <tr key={app.id} className="hover:bg-indigo-50/30 transition-colors group">
+                          <td className="py-4 px-6">
+                            <p className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                              {app.nguoi_dung?.ho_ten}
+                              {hasDuplicate && <span title="Cảnh báo: Có minh chứng trùng lặp (Gian lận)"><ShieldAlert size={14} className="text-rose-500 animate-pulse" /></span>}
+                              {!hasDuplicate && hasAiWarning && <span title="Có minh chứng bị AI cảnh báo"><AlertTriangle size={14} className="text-amber-500" /></span>}
+                            </p>
+                            <p className="text-xs text-slate-500 font-medium mt-0.5">{app.nguoi_dung?.msv} • {app.quy_che?.nam_hoc}</p>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-3">
+                                    <span className="text-sm font-bold text-slate-700">{app.minh_chungs?.length || 0}/5</span>
+                              <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${((app.minh_chungs?.length || 0)/5)*100}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold border ${STATUS_BADGE[app.trang_thai]?.cls}`}>
+                              {STATUS_BADGE[app.trang_thai]?.label}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6 text-right">
+                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => setReviewAction({ id: app.id, action: 'REJECT' })} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors tooltip" title="Từ chối"><XCircle size={18} /></button>
+                              {app.trang_thai.startsWith('CHO_') && (
+                                <button onClick={() => setReviewAction({ id: app.id, action: 'APPROVE' })} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors tooltip" title="Duyệt"><CheckCircle size={18} /></button>
+                              )}
+                              {app.trang_thai.startsWith('DAT_') && app.trang_thai !== 'DAT_SV5T' && (
+                                <button onClick={() => handleEscalate(app.id)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors tooltip" title="Nộp lên tuyến trên"><ArrowUpCircle size={18} /></button>
+                              )}
+                              <button onClick={() => setSelectedAppId(app.id)} className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg transition-colors">Xem Dashboard</button>
+                            </div>
+                            <div className="group-hover:hidden text-xs text-slate-400 font-medium">Trượt để thao tác</div>
+                          </td>
+                        </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
+        </>
+      )}
+
+      {/* Empty State for Student without active rules */}
+      {!isStaff && myApps.length === 0 && activeQuyChes.length === 0 && (
+        <div className="text-center py-16 bg-white border border-slate-200 border-dashed rounded-[2rem] shadow-sm">
+          <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Target size={32} className="text-slate-300" />
+          </div>
+          <h3 className="text-xl font-bold text-slate-800 mb-2">Chưa có mục tiêu</h3>
+          <p className="text-slate-500 font-medium max-w-md mx-auto">Bạn chưa tham gia đợt xét duyệt nào. Hãy theo dõi thông báo từ Hội Sinh viên để khởi tạo hồ sơ.</p>
         </div>
       )}
 

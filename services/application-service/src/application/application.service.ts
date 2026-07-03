@@ -187,7 +187,7 @@ export class ApplicationService {
   async submitApplication(id: string, userId: string, minhChungIds: string[]) {
     let app = await this.prisma.hoSo.findUnique({
       where: { id },
-      include: { minh_chungs: true, quy_che: { include: { tieu_chis: true } } }
+      include: { minh_chungs: { include: { tieu_chi: true } }, quy_che: { include: { tieu_chis: true } } }
     });
 
     if (!app || app.nguoi_dung_id !== userId) {
@@ -212,7 +212,7 @@ export class ApplicationService {
       // Re-fetch app with updated proofs
       app = await this.prisma.hoSo.findUnique({
         where: { id },
-        include: { minh_chungs: true, quy_che: { include: { tieu_chis: true } } }
+        include: { minh_chungs: { include: { tieu_chi: true } }, quy_che: { include: { tieu_chis: true } } }
       });
       
       if (!app) {
@@ -221,10 +221,22 @@ export class ApplicationService {
     }
 
     // Check criteria completion
+    // Lọc trùng lặp tiêu chí theo tên để hỗ trợ 1 minh chứng dùng cho nhiều cấp
+    const uniqueTcsMap = new Map();
     for (const tc of app.quy_che.tieu_chis) {
-      const tcProofs = app.minh_chungs.filter(mc => mc.tieu_chi_id === tc.id);
+      uniqueTcsMap.set(tc.ten_tieu_chi.trim().toLowerCase(), tc);
+    }
+    const uniqueTcs = Array.from(uniqueTcsMap.values());
+
+    for (const tc of uniqueTcs) {
+      const tcProofs = app.minh_chungs.filter(mc => 
+        mc.tieu_chi_id === tc.id || 
+        app.quy_che.tieu_chis.find(t => t.id === mc.tieu_chi_id)?.ten_tieu_chi?.trim().toLowerCase() === tc.ten_tieu_chi.trim().toLowerCase() ||
+        // Check if mc has populated tieu_chi (it might not be populated in findUnique)
+        (mc as any).tieu_chi?.ten_tieu_chi?.trim().toLowerCase() === tc.ten_tieu_chi.trim().toLowerCase()
+      );
       if (tcProofs.length < tc.so_luong_yeu_cau) {
-        throw new BadRequestException(`Tiêu chí "${tc.ten_tieu_chi}" chưa đủ minh chứng. Yêu cầu: ${tc.so_luong_yeu_cau}, Đã có: ${tcProofs.length}`);
+        throw new BadRequestException(`Tiêu chí "${tc.ten_tieu_chi}" chưa đủ minh chứng.`);
       }
     }
 
@@ -284,9 +296,9 @@ export class ApplicationService {
     try {
       const notifyUrl = process.env.NOTIFICATION_URL || 'http://localhost:3007';
       const stateLabel: Record<string, string> = {
-        DAT_TRUONG: '✅ Đạt cấp Trường',
-        DAT_TINH: '✅ Đạt cấp Tỉnh/TP',
-        DAT_SV5T: '🏆 Đạt danh hiệu SV5T!',
+        DAT_TRUONG: '🏆 Đạt danh hiệu SV5T cấp Trường!',
+        DAT_TINH: '🏆 Đạt danh hiệu SV5T cấp Tỉnh/Thành phố!',
+        DAT_SV5T: '🏆 Đạt danh hiệu SV5T cấp Trung ương!',
         BI_TU_CHOI: '❌ Bị từ chối',
       };
       await axios.post(`${notifyUrl}/internal/notify`, {

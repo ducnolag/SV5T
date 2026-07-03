@@ -23,14 +23,14 @@ let ProofController = class ProofController {
     constructor(proofService) {
         this.proofService = proofService;
     }
-    upload(files, tieuChiId, hoSoId, ocrValid, tenMinhChung, req) {
+    upload(files, tieuChiId, hoSoId, ocrValid, tenMinhChung, aiMismatch, aiSuggestion, req) {
         if (!files || files.length === 0) {
             throw new common_1.BadRequestException('Vui lòng chọn file minh chứng');
         }
         const tieuChiIdOrNull = tieuChiId && tieuChiId.length > 0 ? tieuChiId : null;
         const hoSoIdOrUndefined = hoSoId && hoSoId.length > 0 ? hoSoId : undefined;
         const tenMinhChungOrNull = tenMinhChung && tenMinhChung.length > 0 ? tenMinhChung : null;
-        return this.proofService.uploadProof(req.user.id, tieuChiIdOrNull, files, hoSoIdOrUndefined, ocrValid, tenMinhChungOrNull);
+        return this.proofService.uploadProof(req.user.id, tieuChiIdOrNull, files, hoSoIdOrUndefined, ocrValid, tenMinhChungOrNull, aiMismatch, aiSuggestion);
     }
     getMyProofs(req) {
         return this.proofService.getMyProofs(req.user.id);
@@ -51,9 +51,11 @@ __decorate([
     __param(2, (0, common_1.Body)('ho_so_id')),
     __param(3, (0, common_1.Body)('ocr_valid')),
     __param(4, (0, common_1.Body)('ten_minh_chung')),
-    __param(5, (0, common_1.Request)()),
+    __param(5, (0, common_1.Body)('ai_mismatch')),
+    __param(6, (0, common_1.Body)('ai_suggestion')),
+    __param(7, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Array, String, String, String, String, Object]),
+    __metadata("design:paramtypes", [Array, String, String, String, String, String, String, Object]),
     __metadata("design:returntype", void 0)
 ], ProofController.prototype, "upload", null);
 __decorate([

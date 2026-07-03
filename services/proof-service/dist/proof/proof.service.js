@@ -53,14 +53,26 @@ let ProofService = class ProofService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async uploadProof(userId, tieuChiId, files, hoSoId, ocrValid, tenMinhChung) {
+    async uploadProof(userId, tieuChiId, files, hoSoId, ocrValid, tenMinhChung, aiMismatch, aiSuggestion) {
         const uploadDir = path.join(process.cwd(), 'uploads');
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
         }
+        const crypto = require('crypto');
         const fileUrls = [];
         for (const file of files) {
-            const fileName = `${Date.now()}-${file.originalname}`;
+            const hash = crypto.createHash('md5').update(file.buffer).digest('hex');
+            const existing = await this.prisma.minhChung.findFirst({
+                where: {
+                    nguoi_dung_id: userId,
+                    file_url: { contains: `__${hash}__` }
+                }
+            });
+            if (existing) {
+                throw new BadRequestException(`Tệp "${file.originalname}" đã được tải lên trước đó. Vui lòng không nộp trùng lặp minh chứng!`);
+            }
+            const safeName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_');
+            const fileName = `${Date.now()}__${hash}__${safeName}`;
             const filePath = path.join(uploadDir, fileName);
             fs.writeFileSync(filePath, file.buffer);
             fileUrls.push(`/uploads/${fileName}`);
@@ -68,7 +80,13 @@ let ProofService = class ProofService {
         let trangThai = 'DANG_XL';
         let aiScore = null;
         let resolvedTieuChiId = tieuChiId;
-        if (ocrValid === 'true') {
+        let finalTenMinhChung = tenMinhChung;
+        if (aiMismatch === 'true') {
+            trangThai = 'CAN_KIEM_TRA';
+            aiScore = 30;
+            finalTenMinhChung = `[⚠️ Cảnh báo AI: Chọn sai loại - Khuyến nghị: ${aiSuggestion || 'Khác'}] ${tenMinhChung || 'Không tên'}`;
+        }
+        else if (ocrValid === 'true') {
             trangThai = 'DA_XAC_THUC';
             aiScore = 95;
         }
@@ -80,7 +98,7 @@ let ProofService = class ProofService {
             nguoi_dung_id: userId,
             tieu_chi_id: resolvedTieuChiId || null,
             loai: 'BEN_NGOAI',
-            ten_minh_chung: tenMinhChung,
+            ten_minh_chung: finalTenMinhChung,
             file_url: JSON.stringify(fileUrls),
             trang_thai: trangThai,
             ai_xac_thuc_muc_do: aiScore,

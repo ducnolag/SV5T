@@ -3,7 +3,7 @@ import { ReviewProofDto } from './dto';
 export declare class ProofController {
     private readonly proofService;
     constructor(proofService: ProofService);
-    upload(files: Array<Express.Multer.File>, tieuChiId: string, hoSoId: string, ocrValid: string, tenMinhChung: string, req: any): Promise<{
+    upload(files: Array<Express.Multer.File>, tieuChiId: string, hoSoId: string, ocrValid: string, tenMinhChung: string, aiMismatch: string, aiSuggestion: string, req: any): Promise<{
         tieu_chi: {
             id: string;
             quy_che_id: string;
