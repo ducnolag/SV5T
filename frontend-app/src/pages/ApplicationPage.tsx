@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -210,11 +210,11 @@ export default function ApplicationPage() {
       new Map((appDetail.quy_che?.tieu_chis || []).map((tc: any) => [tc.ten_tieu_chi.trim().toLowerCase(), tc])).values()
     );
 
-    const duplicateHashes = useMemo(() => {
+    const duplicateHashes = (() => {
       if (!appDetail?.minh_chungs) return new Set();
       const hashes = appDetail.minh_chungs.map((mc: any) => extractFileHash(mc.file_url));
       return new Set(hashes.filter((h: string, i: number) => hashes.indexOf(h) !== i));
-    }, [appDetail]);
+    })();
 
     deduplicatedTieuChis.forEach((tc: any) => {
       const reqCount = tc.so_luong_yeu_cau || 1;
