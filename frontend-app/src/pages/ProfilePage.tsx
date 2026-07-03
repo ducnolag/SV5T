@@ -168,7 +168,7 @@ export default function ProfilePage() {
                 <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
                   {user?.role === 'CB_TINH' ? 'Tỉnh / Thành phố trực thuộc' : user?.role === 'CB_TW' ? 'Cơ quan Trung ương' : 'Trường / Đơn vị trực thuộc'}
                 </label>
-                {['SINH_VIEN', 'CB_TINH', 'CB_TW'].includes(user?.role || '') ? (
+                {['CB_TINH', 'CB_TW'].includes(user?.role || '') ? (
                   <div className="relative opacity-70">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                       <Building size={18} />
