@@ -15,7 +15,9 @@
     "body-parser": "^2.3.0",
     "cheerio": "^1.2.0",
     "cors": "^2.8.6",
+    "duck-duck-scrape": "^2.2.7",
     "express": "^5.2.1",
+    "googlethis": "^1.8.0",
     "multer": "^2.2.0",
     "tesseract.js": "^7.0.0",
     "xml2js": "^0.6.2"
