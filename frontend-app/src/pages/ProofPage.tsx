@@ -315,7 +315,7 @@ export default function ProofPage() {
                 try { urls = JSON.parse(proof.file_url); } catch { urls = [proof.file_url]; }
                 const firstUrl = urls[0];
                 const isImage = firstUrl?.match(/\.(jpeg|jpg|gif|png)$/i) != null;
-                const src = firstUrl?.startsWith('http') ? firstUrl : `http://localhost:3000${firstUrl?.startsWith('/') ? '' : '/'}${firstUrl}`;
+                const src = firstUrl?.startsWith('http') ? firstUrl : `${(import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/api$/, '')}${firstUrl?.startsWith('/') ? '' : '/'}${firstUrl}`;
                 
                 const isVerified = proof.trang_thai === 'DA_XAC_THUC' || proof.trang_thai === 'DA_DUYET' || (proof.ai_xac_thuc_muc_do && proof.ai_xac_thuc_muc_do >= 80);
                 
@@ -409,9 +409,9 @@ export default function ProofPage() {
                 </>
               )}
               {previewImages[currentPreviewIndex].match(/\.(pdf)$/i) ? (
-                <iframe src={previewImages[currentPreviewIndex].startsWith('http') ? previewImages[currentPreviewIndex] : `http://localhost:3000${previewImages[currentPreviewIndex].startsWith('/') ? '' : '/'}${previewImages[currentPreviewIndex]}`} className="w-full h-[70vh] rounded-xl shadow-sm" />
+                <iframe src={previewImages[currentPreviewIndex].startsWith('http') ? previewImages[currentPreviewIndex] : `${(import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/api$/, '')}${previewImages[currentPreviewIndex].startsWith('/') ? '' : '/'}${previewImages[currentPreviewIndex]}`} className="w-full h-[70vh] rounded-xl shadow-sm" />
               ) : (
-                <img src={previewImages[currentPreviewIndex].startsWith('http') ? previewImages[currentPreviewIndex] : `http://localhost:3000${previewImages[currentPreviewIndex].startsWith('/') ? '' : '/'}${previewImages[currentPreviewIndex]}`} alt="Preview" className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-sm" />
+                <img src={previewImages[currentPreviewIndex].startsWith('http') ? previewImages[currentPreviewIndex] : `${(import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/api$/, '')}${previewImages[currentPreviewIndex].startsWith('/') ? '' : '/'}${previewImages[currentPreviewIndex]}`} alt="Preview" className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-sm" />
               )}
             </div>
           </div>

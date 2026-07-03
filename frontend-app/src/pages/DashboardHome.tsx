@@ -112,7 +112,11 @@ export default function DashboardHome() {
                 const progress = CRITERIA_NAMES.map(name => {
                   const tc = res.data.quy_che.tieu_chis.find((t: any) => t.ten_tieu_chi.includes(name.split(' ')[0]));
                   if (tc) {
-                    const proofCount = userProofs.filter((p: any) => p.tieu_chi_id === tc.id).length;
+                    const proofCount = userProofs.filter((p: any) => {
+                      if (p.tieu_chi_id === tc.id) return true;
+                      if (p.tieu_chi?.ten_tieu_chi?.trim().toLowerCase() === tc.ten_tieu_chi.trim().toLowerCase()) return true;
+                      return false;
+                    }).length;
                     const req = tc.so_luong_yeu_cau || 1;
                     return Math.min(100, Math.round((proofCount / req) * 100));
                   }
