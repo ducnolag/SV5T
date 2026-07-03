@@ -398,10 +398,11 @@ async function fetchOgImage(url) {
     }
 }
 
+const xml2js = require('xml2js');
+
 async function searchActionableEvents(keyword, criteria) {
-  // We want to find SV5T criteria posts that give certificates on Facebook
-  const query = `site:facebook.com "sinh viên 5 tốt" "${keyword}" "nhận chứng chỉ" OR "giấy chứng nhận"`;
-  const url = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query);
+  const query = `("chứng chỉ" OR "chứng nhận" OR "đăng ký" OR "tham gia") "sinh viên" "${keyword}"`;
+  const url = 'https://news.google.com/rss/search?q=' + encodeURIComponent(query) + '&hl=vi&gl=VN&ceid=VN:vi';
   
   let validItems = [];
   const genericThumbnails = [
@@ -411,39 +412,30 @@ async function searchActionableEvents(keyword, criteria) {
   ];
   
   try {
-      const res = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' }});
-      const $ = cheerio.load(res.data);
+      const res = await axios.get(url);
+      const parser = new xml2js.Parser({ explicitArray: false });
+      const result = await parser.parseStringPromise(res.data);
+      let items = result.rss?.channel?.item || [];
+      if (!Array.isArray(items)) items = [items];
       
-      const elements = $('.result').toArray();
-      for (const el of elements) {
-          const title = $(el).find('.result__title').text().trim();
-          const snippet = $(el).find('.result__snippet').text().trim();
-          const rawLink = $(el).find('.result__url').attr('href');
-          
-          let link = rawLink;
-          if (rawLink && rawLink.includes('uddg=')) {
-              link = decodeURIComponent(rawLink.split('uddg=')[1].split('&')[0]);
-          }
-          
-          const textToAnalyze = (title + ' ' + snippet).toLowerCase();
+      const fiveDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000; // Relaxed to 30 days so we don't return 0 results
+      
+      for (const item of items) {
+          if (!item.title) continue;
+          const textToAnalyze = (item.title + ' ' + (item.description || '')).toLowerCase();
+          const pubDate = new Date(item.pubDate).getTime();
           
           const hasFutureDate = extractFutureDates(textToAnalyze);
           const hasActionWords = /phát động|tuyển|mở đơn|đăng ký|tham gia|nhận chứng chỉ|cấp giấy|nhận giấy/.test(textToAnalyze);
+          const isRecent = pubDate > fiveDaysAgo;
           
-          if (hasFutureDate || hasActionWords) {
-              let sourceName = "Facebook - Bài đăng Mạng Xã Hội";
-              if (title.includes(' - ')) {
-                  sourceName = "Facebook - " + title.split(' - ')[title.split(' - ').length - 1].trim();
-              } else if (title.includes('|')) {
-                  sourceName = "Facebook - " + title.split('|')[title.split('|').length - 1].trim();
-              }
-              
+          if (hasFutureDate || (isRecent && hasActionWords)) {
               validItems.push({
-                  docId: 'FB_' + Math.random().toString(36).substr(2, 9),
-                  title: title,
-                  sourceName: sourceName,
-                  postLink: link,
-                  createDate: new Date().toISOString()
+                  docId: 'NEWS_' + Math.random().toString(36).substr(2, 9),
+                  title: item.title.split(' - ')[0],
+                  sourceName: "Sự kiện - " + (item.source?._ || 'Trang thông tin'),
+                  postLink: item.link,
+                  createDate: new Date(item.pubDate).toISOString()
               });
           }
       }
@@ -451,15 +443,15 @@ async function searchActionableEvents(keyword, criteria) {
       // Limit to 5 valid items before fetching images to save time
       validItems = validItems.slice(0, 5);
       
-      // Fetch actual Facebook images in parallel
+      // Fetch actual article images in parallel
       await Promise.all(validItems.map(async (item) => {
-          const fbImage = await fetchOgImage(item.postLink);
-          item.pictures = [fbImage || genericThumbnails[Math.floor(Math.random() * genericThumbnails.length)]];
+          const articleImage = await fetchOgImage(item.postLink);
+          item.pictures = [articleImage || genericThumbnails[Math.floor(Math.random() * genericThumbnails.length)]];
       }));
       
       return validItems;
   } catch (e) {
-      console.error("DDG Search Error:", e.message);
+      console.error("News Search Error:", e.message);
       return [];
   }
 }
