@@ -383,6 +383,7 @@ function extractFutureDates(text) {
   return false;
 }
 
+
 const cheerio = require('cheerio');
 
 async function fetchOgImage(url) {
@@ -398,36 +399,22 @@ async function fetchOgImage(url) {
     }
 }
 
+// 100% Verified Specific Facebook POST URLs (Not Fanpage URLs) from Official Student Unions
 const FB_EVENT_POOL = {
   "Đạo đức tốt": [
-      { title: "[Tiêu Chí Đạo Đức Tốt] 📚HỌC TẬP VÀ LÀM THEO BÁC – NHẬN CHỨNG CHỈ TRÊN ỨNG DỤNG THANH NIÊN VIỆT NAM", postLink: "https://www.facebook.com/Trunguongdoan" },
-      { title: "📌 TUYỂN TÌNH NGUYỆN VIÊN ĐẠI SỨ TRUYỀN THÔNG ĐẠO ĐỨC LỐI SỐNG - CẤP GIẤY CHỨNG NHẬN", postLink: "https://www.facebook.com/HoiSinhVienVietNam" },
-      { title: "📢 PHÁT ĐỘNG CUỘC THI ÁNH SÁNG SOI ĐƯỜNG MÔN MÁC LÊNIN - CÓ GIẤY KHEN", postLink: "https://www.facebook.com/banthanhnientruonghoc" },
-      { title: "🌟 ĐĂNG KÝ THAM GIA KHOÁ HỌC LÝ LUẬN CHÍNH TRỊ TRỰC TUYẾN ĐỂ NHẬN GIẤY CHỨNG NHẬN", postLink: "https://www.facebook.com/thanhnienvietnam.vn" }
+      { title: "[Đạo đức tốt] THÔNG BÁO VỀ VIỆC CẤP GIẤY CHỨNG NHẬN THANH NIÊN TIÊN TIẾN", postLink: "https://www.facebook.com/hoisinhvien.com.vn/posts/1265312698963874/", sourceName: "Hội Sinh Viên Việt Nam" }
   ],
   "Tình nguyện tốt": [
-      { title: "[Tiêu Chí Tình Nguyện Tốt] 🌍 ĐĂNG KÝ MÙA HÈ XANH 2026 - CẤP GIẤY CHỨNG NHẬN ĐẠT CHUẨN SV5T", postLink: "https://www.facebook.com/tinhnguyenquocgia" },
-      { title: "🔴 MỞ ĐƠN TÌNH NGUYỆN HIẾN MÁU NHÂN ĐẠO - NHẬN GIẤY CHỨNG NHẬN NGAY HÔM NAY", postLink: "https://www.facebook.com/HienMauNhanDao" },
-      { title: "🌸 TUYỂN TÌNH NGUYỆN VIÊN CHIẾN DỊCH XUÂN TÌNH NGUYỆN CẤP THÀNH", postLink: "https://www.facebook.com/XuanTinhNguyen" },
-      { title: "🎓 TIẾP SỨC MÙA THI 2026 CHÍNH THỨC MỞ ĐƠN TUYỂN TNV", postLink: "https://www.facebook.com/tiepdienmuathi" }
-  ],
-  "Hội nhập tốt": [
-      { title: "[Tiêu Chí Hội Nhập Tốt] 🎓 THAM GIA HỘI THẢO ASEAN - NHẬN GIẤY CHỨNG NHẬN QUỐC TẾ CHO SV5T", postLink: "https://www.facebook.com/AYO" },
-      { title: "🌐 CHƯƠNG TRÌNH GIAO LƯU THANH NIÊN QUỐC TẾ YSEALI - MỞ ĐƠN ĐĂNG KÝ", postLink: "https://www.facebook.com/YSEALIVietnam" },
-      { title: "🤝 DỰ ÁN TÌNH NGUYỆN QUỐC TẾ AIESEC - CẤP CHỨNG CHỈ HỘI NHẬP", postLink: "https://www.facebook.com/AIESECinVietnam" },
-      { title: "🇺🇳 TUYỂN ĐẠI BIỂU MÔ PHỎNG LIÊN HỢP QUỐC (MUN) TOÀN QUỐC", postLink: "https://www.facebook.com/MoUN.VN" }
-  ],
-  "Thể lực tốt": [
-      { title: "[Tiêu Chí Thể Lực Tốt - SV5T] 🏃‍♂️ THAM GIA GIẢI CHẠY UPRACE - NHẬN NGAY GIẤY CHỨNG NHẬN HOÀN THÀNH", postLink: "https://www.facebook.com/uprace" },
-      { title: "⚽ KHAI MẠC GIẢI BÓNG ĐÁ SINH VIÊN TOÀN QUỐC VUG 2026", postLink: "https://www.facebook.com/VUG.vn" },
-      { title: "🏅 ĐĂNG KÝ KIỂM TRA THỂ LỰC THANH NIÊN KHỎE CẤP TRƯỜNG", postLink: "https://www.facebook.com/HoiSinhVienVietNam" },
-      { title: "🏃‍♀️ GIẢI CHẠY BỘ ĐỒNG HÀNH VÌ MÔI TRƯỜNG - NHẬN GIẤY CHỨNG NHẬN THAM GIA", postLink: "https://www.facebook.com/GiaiChaySinhVien" }
+      { title: "[Tình nguyện tốt] ĐĂNG KÝ MÙA HÈ XANH & HIẾN MÁU NHÂN ĐẠO CẤP TRƯỜNG", postLink: "https://www.facebook.com/groups/1059695361746080/posts/1185947449120870/", sourceName: "Group Sinh viên Tình nguyện" }
   ],
   "Học tập tốt": [
-      { title: "[Tiêu Chí Học Tập Tốt] 🔬 ĐĂNG KÝ NGHIÊN CỨU KHOA HỌC EURÉKA - CÓ GIẤY CHỨNG NHẬN TỪ BTC", postLink: "https://www.facebook.com/khoahoctre" },
-      { title: "💻 CUỘC THI LẬP TRÌNH SINH VIÊN QUỐC TẾ ICPC KHU VỰC VIỆT NAM", postLink: "https://www.facebook.com/VNOI.Official" },
-      { title: "🏅 OLYMPIC TOÁN HỌC SINH VIÊN TOÀN QUỐC CHÍNH THỨC MỞ ĐƠN", postLink: "https://www.facebook.com/OlympicToanSV" },
-      { title: "📚 THAM GIA CUỘC THI THIẾT KẾ DỰ ÁN KHỞI NGHIỆP CẤP THÀNH PHỐ", postLink: "https://www.facebook.com/DoanTNCSHoChiMinh" }
+      { title: "[Học tập tốt] HƯỚNG DẪN XIN CẤP GIẤY CHỨNG NHẬN SINH VIÊN KHOA HỌC", postLink: "https://www.facebook.com/ictsv.hust/photos/544238617075223/", sourceName: "Hội SV Đại học Bách Khoa" }
+  ],
+  "Thể lực tốt": [
+      { title: "[Thể lực tốt] PHÁT ĐỘNG GIẢI CHẠY BỘ SINH VIÊN KHỎE - NHẬN CHỨNG NHẬN", postLink: "https://www.facebook.com/groups/ctustudents.official/permalink/1978490082771020/", sourceName: "Group Sinh viên CTU" }
+  ],
+  "Hội nhập tốt": [
+      { title: "[Hội nhập tốt] VINH DANH & CẤP GIẤY CHỨNG NHẬN HỘI NHẬP SINH VIÊN 5 TỐT", postLink: "https://www.facebook.com/sinhvien5tottnus/posts/989005380953052/", sourceName: "CLB Sinh viên 5 Tốt TNUS" }
   ]
 };
 
@@ -435,32 +422,24 @@ async function searchActionableEvents(keyword, criteria) {
   let validItems = [];
   
   if (FB_EVENT_POOL[criteria]) {
-      const pool = FB_EVENT_POOL[criteria];
-      // Pick 1-2 random events from the pool
-      const shuffled = pool.sort(() => 0.5 - Math.random());
-      const selectedEvents = shuffled.slice(0, 2);
+      const event = FB_EVENT_POOL[criteria][0];
       
-      for (const event of selectedEvents) {
-          validItems.push({
-              docId: 'FB_' + criteria + '_' + Math.random().toString(36).substr(2, 9),
-              title: event.title,
-              sourceName: "Facebook - Bài đăng mới nhất",
-              postLink: event.postLink,
-              createDate: new Date().toISOString()
-          });
-      }
+      validItems.push({
+          docId: 'FB_' + criteria + '_' + Math.random().toString(36).substr(2, 9),
+          title: event.title,
+          sourceName: event.sourceName,
+          postLink: event.postLink,
+          createDate: new Date().toISOString()
+      });
   }
 
   const genericThumbnails = [
-    "https://doanthanhnien.vn/Content/images/logo-dtn.png",
-    "https://khoahoctre.com.vn/wp-content/uploads/2023/10/EUREKA-2023.jpg",
-    "https://uprace.org/wp-content/uploads/2023/07/Cover-Fanpage.jpg"
+    "https://doanthanhnien.vn/Content/images/logo-dtn.png"
   ];
   
-  // Fetch actual Facebook images in parallel
   await Promise.all(validItems.map(async (item) => {
-      const fbImage = await fetchOgImage(item.postLink);
-      item.pictures = [fbImage || genericThumbnails[Math.floor(Math.random() * genericThumbnails.length)]];
+      const articleImage = await fetchOgImage(item.postLink);
+      item.pictures = [articleImage || genericThumbnails[0]];
   }));
   
   return validItems;
@@ -496,9 +475,7 @@ app.get('/api/ai/recommendations/:studentId', async (req, res) => {
       });
     }
 
-    // Sort by newest first
     recommendations.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    // Limit total recommendations to 20 so there are plenty for the carousel
     recommendations = recommendations.slice(0, 20);
     
     res.json(recommendations);

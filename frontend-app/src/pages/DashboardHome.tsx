@@ -125,7 +125,7 @@ export default function DashboardHome() {
                 setCriteriaProgress(progress);
                 const missing = CRITERIA_NAMES.filter((_, i) => progress[i] === 0);
                 if (missing.length > 0) {
-                  api.get(`/ai/recommendations/${user?.id || 'default'}?missing=${encodeURIComponent(missing.join(','))}`)
+                  api.get(`/ai/recommendations/${user?.id || 'default'}?missing=${encodeURIComponent(missing.join(','))}&t=${Date.now()}`)
                      .then(r => setRecs(r.data))
                      .catch(() => {});
                 }
