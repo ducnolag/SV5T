@@ -166,9 +166,9 @@ export default function ProfilePage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                  Trường / Đơn vị trực thuộc
+                  {user?.role === 'CB_TINH' ? 'Tỉnh / Thành phố trực thuộc' : user?.role === 'CB_TW' ? 'Cơ quan Trung ương' : 'Trường / Đơn vị trực thuộc'}
                 </label>
-                {user?.role === 'SINH_VIEN' ? (
+                {['SINH_VIEN', 'CB_TINH', 'CB_TW'].includes(user?.role || '') ? (
                   <div className="relative opacity-70">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                       <Building size={18} />
@@ -176,7 +176,7 @@ export default function ProfilePage() {
                     <input
                       type="text"
                       disabled
-                      value={formData.ten_don_vi}
+                      value={formData.ten_don_vi || (user?.role === 'CB_TW' ? 'Trung ương Hội Sinh viên' : 'Đang cập nhật...')}
                       className="pl-10 w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-sm font-medium cursor-not-allowed"
                     />
                   </div>

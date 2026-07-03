@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
-import { Clock, TrendingUp, CheckCircle, AlertCircle, Zap, ArrowRight, ChevronLeft, ChevronRight, ExternalLink, FileText } from 'lucide-react';
+import { Clock, TrendingUp, CheckCircle, AlertCircle, Zap, ArrowRight, ChevronLeft, ChevronRight, ExternalLink, FileText, Target } from 'lucide-react';
 
 const CRITERIA_NAMES = ['Học tập tốt', 'Đạo đức tốt', 'Thể lực tốt', 'Tình nguyện tốt', 'Hội nhập tốt'];
 const CRITERIA_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -319,48 +319,94 @@ export default function DashboardHome() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div className="bg-white rounded-lg p-6 border border-slate-200 shadow-sm flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Hệ thống Quản lý</h2>
-          <p className="text-slate-500 mt-1">Trung tâm xét duyệt và thống kê hồ sơ trực tuyến</p>
-        </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 font-semibold rounded-lg hover:bg-indigo-100 transition-colors">
-          <FileText size={18} />
-          Xuất báo cáo PDF
-        </button>
-      </div>
-
-      <div className="grid grid-cols-3 gap-6">
-        {[
-          { label: 'Tổng số hồ sơ', value: stats.total, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Chờ xét duyệt', value: stats.pending, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Đã hoàn tất', value: stats.approved, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        ].map(s => (
-          <div key={s.label} className="bg-white rounded-lg p-6 border border-slate-200 shadow-sm">
-            <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">{s.label}</p>
-            <div className={`text-3xl font-black ${s.color}`}>{s.value}</div>
+    <div className="max-w-6xl mx-auto space-y-8">
+      <div className="bg-gradient-to-br from-indigo-900 to-indigo-700 rounded-[2rem] p-10 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/30 rounded-full -ml-12 -mb-12 blur-xl"></div>
+        
+        <div className="relative z-10 flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-black tracking-tight mb-2">Hệ thống Xét duyệt Danh hiệu</h2>
+            <p className="text-indigo-100 text-lg font-medium">Theo dõi tiến trình hồ sơ Sinh viên 5 tốt các cấp</p>
           </div>
-        ))}
-      </div>
-
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-        <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4">
-          <CheckCircle size={18} className="text-emerald-500" /> Chức năng chính
-        </h3>
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { t: 'Hoạt động', d: 'Quản lý, tạo mới và phê duyệt phong trào' },
-            { t: 'Minh chứng', d: 'Xác minh tài liệu OCR tự động từ sinh viên' },
-            { t: 'Hồ sơ', d: 'Duyệt hồ sơ và trình lên tuyến cao hơn' }
-          ].map(x => (
-            <div key={x.t} className="p-4 rounded-lg bg-slate-50 border border-slate-100">
-              <p className="font-semibold text-slate-800 mb-1">{x.t}</p>
-              <p className="text-sm text-slate-500">{x.d}</p>
-            </div>
-          ))}
+          <button className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl backdrop-blur transition-colors">
+            <FileText size={20} />
+            Xuất Báo Cáo
+          </button>
         </div>
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all group">
+          <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+            <FileText size={28} />
+          </div>
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Tổng số hồ sơ</p>
+          <div className="text-5xl font-black text-slate-800">{stats.total}</div>
+        </div>
+        
+        <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:border-amber-200 transition-all group relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-bl-full -mr-8 -mt-8 -z-0"></div>
+          <div className="relative z-10">
+            <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <Clock size={28} />
+            </div>
+            <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Đang chờ duyệt</p>
+            <div className="text-5xl font-black text-amber-600">{stats.pending}</div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:border-emerald-200 transition-all group relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full -mr-8 -mt-8 -z-0"></div>
+          <div className="relative z-10">
+            <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <CheckCircle size={28} />
+            </div>
+            <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Đã hoàn tất</p>
+            <div className="text-5xl font-black text-emerald-600">{stats.approved}</div>
+          </div>
+        </div>
+      </div>
+
+      {!isRole('CAN_BO_TRUONG') && (
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
+          <h3 className="font-black text-slate-800 text-xl mb-6">Phân cấp xét duyệt</h3>
+          <div className="flex flex-col gap-4">
+            <div className="p-5 rounded-2xl border-2 border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-slate-200 text-slate-500 rounded-xl flex items-center justify-center font-bold text-xl">1</div>
+                <div>
+                  <h4 className="font-bold text-slate-700 text-lg">Cấp Trường</h4>
+                  <p className="text-sm text-slate-500 font-medium">Thu thập minh chứng và xét duyệt sơ bộ</p>
+                </div>
+              </div>
+              <CheckCircle className="text-slate-300" size={28} />
+            </div>
+            
+            <div className="p-5 rounded-2xl border-2 border-blue-100 flex items-center justify-between bg-blue-50/50">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-blue-200 text-blue-700 rounded-xl flex items-center justify-center font-bold text-xl">2</div>
+                <div>
+                  <h4 className="font-bold text-blue-800 text-lg">Cấp Thành Phố</h4>
+                  <p className="text-sm text-blue-600/80 font-medium">Thẩm định hồ sơ do Trường đề xuất</p>
+                </div>
+              </div>
+              {isRole('CB_TINH') ? <div className="px-4 py-1.5 bg-blue-600 text-white text-sm font-bold rounded-full">Nhiệm vụ của bạn</div> : <CheckCircle className="text-blue-300" size={28} />}
+            </div>
+
+            <div className="p-5 rounded-2xl border-2 border-amber-100 flex items-center justify-between bg-amber-50/50">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-amber-200 text-amber-700 rounded-xl flex items-center justify-center font-bold text-xl">3</div>
+                <div>
+                  <h4 className="font-bold text-amber-800 text-lg">Cấp Trung Ương</h4>
+                  <p className="text-sm text-amber-700/80 font-medium">Phê duyệt danh hiệu Sinh viên 5 tốt toàn quốc</p>
+                </div>
+              </div>
+              {isRole('CB_TW') ? <div className="px-4 py-1.5 bg-amber-500 text-white text-sm font-bold rounded-full">Nhiệm vụ của bạn</div> : <Target className="text-amber-300" size={28} />}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

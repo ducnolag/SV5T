@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { CheckCircle, XCircle, UploadCloud, FileText, Search, Filter, Sparkles, Calendar, ShieldCheck, Target, AlertTriangle, X, ChevronLeft, ArrowUpCircle, ChevronRight as ChevronRightIcon, ShieldAlert } from 'lucide-react';
@@ -640,8 +641,8 @@ export default function ApplicationPage() {
       )}
 
       {/* Review Confirmation Modal */}
-      {reviewAction && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+      {reviewAction && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center">
             <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${reviewAction.action === 'APPROVE' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
               {reviewAction.action === 'APPROVE' ? <ShieldCheck size={32} /> : <XCircle size={32} />}
@@ -666,7 +667,8 @@ export default function ApplicationPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
