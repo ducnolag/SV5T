@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { CheckCircle, XCircle, ArrowLeft, UploadCloud, FileText, Search, Filter, Sparkles, User, Calendar, ShieldCheck, Target, AlertTriangle, X, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowLeft, UploadCloud, FileText, Search, Filter, Sparkles, Calendar, ShieldCheck, Target, AlertTriangle, X, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 
 const FLOW_STEPS = [
@@ -196,9 +196,7 @@ export default function ApplicationPage() {
               </div>
               <h2 className="text-3xl font-black text-slate-800 tracking-tight">Dashboard Mục Tiêu SV5T</h2>
               <div className="flex items-center gap-4 text-sm font-medium text-slate-500 mt-2">
-                <span className="flex items-center gap-1.5"><Calendar size={16} className="text-indigo-500" /> {appDetail.quy_che?.nam_hoc}</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
-                <span className="flex items-center gap-1.5"><User size={16} className="text-indigo-500" /> {appDetail.nguoi_dung?.ho_ten} ({appDetail.nguoi_dung?.msv})</span>
+                <span className="flex items-center gap-1.5"><Calendar size={16} className="text-indigo-500" /> Năm học {appDetail.quy_che?.nam_hoc}</span>
               </div>
             </div>
             
@@ -515,9 +513,11 @@ export default function ApplicationPage() {
                 
                 <div className="relative z-10 flex-1">
                   <div className="flex items-center gap-2 mb-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${STATUS_BADGE[app.trang_thai]?.cls}`}>
-                      {STATUS_BADGE[app.trang_thai]?.label}
-                    </span>
+                    {app.trang_thai !== 'DANG_TAO' && (
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${STATUS_BADGE[app.trang_thai]?.cls}`}>
+                        {STATUS_BADGE[app.trang_thai]?.label}
+                      </span>
+                    )}
                   </div>
                   <h3 className="font-black text-xl text-slate-800 leading-snug mb-1 group-hover:text-indigo-600 transition-colors">
                     Dashboard Năm {app.quy_che?.nam_hoc}
@@ -526,17 +526,9 @@ export default function ApplicationPage() {
                 </div>
                 
                 <div className="relative z-10 mt-8 pt-5 border-t border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2 w-full">
-                    <div className="flex-1">
-                      <div className="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
-                        <span>Tiến độ</span>
-                        <span className="text-indigo-600">{app.minh_chungs?.length || 0}/5</span>
-                      </div>
-                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-500 rounded-full transition-all duration-500" style={{ width: `${((app.minh_chungs?.length || 0)/5)*100}%` }}></div>
-                      </div>
-                    </div>
-                  </div>
+                  <span className="text-indigo-600 font-bold text-sm flex items-center gap-2">
+                    Xem chi tiết <ChevronRightIcon size={16} />
+                  </span>
                 </div>
               </div>
             ))

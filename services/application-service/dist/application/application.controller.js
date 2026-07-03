@@ -52,6 +52,7 @@ let ApplicationController = class ApplicationController {
 };
 exports.ApplicationController = ApplicationController;
 __decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
     (0, common_1.Get)('my'),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -59,6 +60,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ApplicationController.prototype, "getMyApplications", null);
 __decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
     (0, common_1.Get)('pending'),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -72,6 +74,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ApplicationController.prototype, "getQuyChes", null);
 __decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
     (0, common_1.Post)('quy-ches'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
@@ -80,6 +83,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ApplicationController.prototype, "saveQuyChe", null);
 __decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
@@ -88,6 +92,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ApplicationController.prototype, "getApplicationById", null);
 __decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
@@ -96,6 +101,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ApplicationController.prototype, "create", null);
 __decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
     (0, common_1.Put)(':id/submit'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
@@ -105,6 +111,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ApplicationController.prototype, "submitApplication", null);
 __decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
     (0, common_1.Put)(':id/review'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
@@ -114,6 +121,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ApplicationController.prototype, "review", null);
 __decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
     (0, common_1.Post)('batch-escalate'),
     __param(0, (0, common_1.Body)('appIds')),
     __param(1, (0, common_1.Request)()),
@@ -123,7 +131,6 @@ __decorate([
 ], ApplicationController.prototype, "escalateBatch", null);
 exports.ApplicationController = ApplicationController = __decorate([
     (0, common_1.Controller)('applications'),
-    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
     __metadata("design:paramtypes", [application_service_1.ApplicationService])
 ], ApplicationController);
 //# sourceMappingURL=application.controller.js.map

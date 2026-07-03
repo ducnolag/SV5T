@@ -71,7 +71,11 @@ app.post('/api/ai/chat', async (req, res) => {
     let activeRules = [];
     let namHoc = '2025-2026';
     try {
-      const response = await axios.get('http://localhost:3006/applications/quy-ches');
+      const authHeader = req.headers.authorization;
+      console.log('AI Service received auth header:', authHeader ? 'YES' : 'NO');
+      const response = await axios.get('http://localhost:3006/applications/quy-ches', {
+        headers: authHeader ? { Authorization: authHeader } : {}
+      });
       if (response.data && response.data.length > 0) {
         namHoc = response.data[0].nam_hoc;
         activeRules = response.data[0].tieu_chis;
@@ -111,8 +115,11 @@ app.post('/api/ai/chat', async (req, res) => {
       `Tiêu chí **Hội nhập tốt** yêu cầu:\n\n- Đạt chứng chỉ tiếng Anh B1 (hoặc điểm học phần ngoại ngữ tích lũy từ 3.0/4.0 hoặc 7.5/10 trở lên).`;
     } else if (lowerMsg.includes("thời gian") || lowerMsg.includes("hạn")) {
       reply = `Hiện tại là thời gian thu thập minh chứng cho năm học ${namHoc}. Bạn hãy tranh thủ cập nhật các minh chứng nhé!`;
+    } else if (lowerMsg.includes("đầy đủ") || lowerMsg.includes("quy chế") || lowerMsg.includes("chi tiết")) {
+      reply = `Dựa trên Quy chế SV5T năm ${namHoc}, sau đây là chi tiết 5 tiêu chí:\n\n` + 
+              activeRules.map(r => `**${r.ten_tieu_chi}**\n${r.mo_ta || 'Đang cập nhật'}`).join('\n\n');
     } else {
-      reply = `Dựa trên Quy chế SV5T năm ${namHoc}, để đạt danh hiệu bạn cần hoàn thiện đủ 5 tiêu chí. Bạn cần hỏi chi tiết về tiêu chí nào?`;
+      reply = `Dựa trên Quy chế SV5T năm ${namHoc}, để đạt danh hiệu bạn cần hoàn thiện 5 tiêu chí: ${activeRules.map(r => r.ten_tieu_chi).join(', ')}. Bạn cần hỏi chi tiết về tiêu chí nào?`;
     }
 
     const chunks = reply.split(' ');
@@ -147,7 +154,8 @@ app.post('/api/ai/extract-criteria', (req, res) => {
   const lines = text.split('\n');
   for (const line of lines) {
     const lowerLine = line.toLowerCase().trim();
-    if (lowerLine.startsWith('-') || lowerLine.startsWith('+') || lowerLine.startsWith('*') || /^\d+\./.test(lowerLine)) {
+    // Only count mandatory rules that start with '-'
+    if (lowerLine.startsWith('-')) {
       if (lowerLine.includes('không vi phạm')) {
         continue; // Bỏ qua tiêu chí không vi phạm vì không cần nộp minh chứng
       }
