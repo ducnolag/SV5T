@@ -111,3 +111,51 @@ input[type="text"], input[type="email"], input[type="password"], input[type="dat
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
+
+/* Print Styles */
+@media print {
+  @page { margin: 1cm; size: A4 portrait; }
+
+  /* Hide unnecessary elements */
+  aside, header, nav, button:not(.print-visible), .no-print {
+    display: none !important;
+  }
+  
+  /* Critical Print Reset: Remove fixed heights and scrollbars from ALL parents */
+  html, body, #root, .h-screen, .overflow-y-auto, .overflow-hidden, .flex-1, main, div {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+  
+  /* Reset background and layout for print */
+  body, main, .dashboard-container {
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* Force charts and specific backgrounds to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Break pages properly */
+  .page-break-before {
+    page-break-before: always;
+  }
+  
+  .avoid-break {
+    page-break-inside: avoid;
+  }
+  
+  /* Make grid/flex elements wrap nicely on paper */
+  .print-block {
+    display: block !important;
+    width: 100% !important;
+  }
+}

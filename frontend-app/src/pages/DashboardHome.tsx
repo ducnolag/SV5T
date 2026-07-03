@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { Clock, TrendingUp, CheckCircle, AlertCircle, Zap, ArrowRight, ChevronLeft, ChevronRight, ExternalLink, FileText, Target } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const CRITERIA_NAMES = ['Học tập tốt', 'Đạo đức tốt', 'Thể lực tốt', 'Tình nguyện tốt', 'Hội nhập tốt'];
 const CRITERIA_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -79,8 +80,10 @@ export default function DashboardHome() {
   const { user, isRole } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [myApp, setMyApp] = useState<any>(null);
-  const [recs, setRecs] = useState<Recommendation[]>([]);
+
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0 });
+  const [appsList, setAppsList] = useState<any[]>([]);
+  const [recs, setRecs] = useState<Recommendation[]>([]);
   const [criteriaProgress, setCriteriaProgress] = useState([0, 0, 0, 0, 0]);
   const [deadline, setDeadline] = useState<Date | null>(null);
 
@@ -131,6 +134,7 @@ export default function DashboardHome() {
     if (isRole('CB_TRUONG', 'CB_TINH', 'CB_TW', 'ADMIN')) {
       api.get('/applications/pending').then(r => {
         const list = r.data || [];
+        setAppsList(list);
         setStats({ total: list.length, pending: list.filter((a: any) => a.trang_thai.startsWith('CHO')).length, approved: list.filter((a: any) => a.trang_thai.startsWith('DAT')).length });
       }).catch(() => {});
     }
@@ -318,95 +322,167 @@ export default function DashboardHome() {
     );
   }
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const pieData = [
+    { name: 'Đang chờ duyệt', value: stats.pending, color: '#f59e0b' },
+    { name: 'Đã hoàn tất', value: stats.approved, color: '#10b981' },
+    { name: 'Đã từ chối', value: stats.total - stats.pending - stats.approved, color: '#ef4444' }
+  ].filter(d => d.value > 0);
+
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      <div className="bg-gradient-to-br from-indigo-900 to-indigo-700 rounded-[2rem] p-10 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/30 rounded-full -ml-12 -mb-12 blur-xl"></div>
+    <div className="max-w-6xl mx-auto space-y-8 dashboard-container">
+      {/* Header - Hidden on print if you want, but good for report title */}
+      <div className="bg-gradient-to-br from-indigo-900 to-indigo-700 rounded-[2rem] p-10 text-white shadow-xl relative overflow-hidden print:rounded-none print:shadow-none print:bg-none print:text-black print:p-4 print:border-b-2 print:border-slate-800">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl print:hidden"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/30 rounded-full -ml-12 -mb-12 blur-xl print:hidden"></div>
         
-        <div className="relative z-10 flex items-center justify-between">
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-black tracking-tight mb-2">Hệ thống Xét duyệt Danh hiệu</h2>
-            <p className="text-indigo-100 text-lg font-medium">Theo dõi tiến trình hồ sơ Sinh viên 5 tốt các cấp</p>
+            <h2 className="text-3xl font-black tracking-tight mb-2">Báo Cáo Thống Kê Sinh Viên 5 Tốt</h2>
+            <p className="text-indigo-100 text-lg font-medium print:text-slate-600">Theo dõi tiến trình hồ sơ các cấp</p>
           </div>
-          <button className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl backdrop-blur transition-colors">
+          <button onClick={handlePrint} className="print-visible no-print flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl backdrop-blur transition-colors shadow-sm border border-white/20">
             <FileText size={20} />
-            Xuất Báo Cáo
+            Xuất Báo Cáo (PDF)
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all group">
-          <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:grid-cols-3">
+        <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all group print:shadow-none print:border-slate-300">
+          <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform print:hidden">
             <FileText size={28} />
           </div>
-          <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Tổng số hồ sơ</p>
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2 print:text-slate-600">Tổng số hồ sơ</p>
           <div className="text-5xl font-black text-slate-800">{stats.total}</div>
         </div>
         
-        <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:border-amber-200 transition-all group relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-bl-full -mr-8 -mt-8 -z-0"></div>
+        <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:border-amber-200 transition-all group relative overflow-hidden print:shadow-none print:border-slate-300">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-bl-full -mr-8 -mt-8 -z-0 print:hidden"></div>
           <div className="relative z-10">
-            <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+            <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform print:hidden">
               <Clock size={28} />
             </div>
-            <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Đang chờ duyệt</p>
+            <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2 print:text-slate-600">Đang chờ duyệt</p>
             <div className="text-5xl font-black text-amber-600">{stats.pending}</div>
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:border-emerald-200 transition-all group relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full -mr-8 -mt-8 -z-0"></div>
+        <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:border-emerald-200 transition-all group relative overflow-hidden print:shadow-none print:border-slate-300">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full -mr-8 -mt-8 -z-0 print:hidden"></div>
           <div className="relative z-10">
-            <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+            <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform print:hidden">
               <CheckCircle size={28} />
             </div>
-            <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Đã hoàn tất</p>
+            <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2 print:text-slate-600">Đã hoàn tất</p>
             <div className="text-5xl font-black text-emerald-600">{stats.approved}</div>
           </div>
         </div>
       </div>
 
-      {!isRole('CAN_BO_TRUONG') && (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
-          <h3 className="font-black text-slate-800 text-xl mb-6">Phân cấp xét duyệt</h3>
-          <div className="flex flex-col gap-4">
-            <div className="p-5 rounded-2xl border-2 border-slate-100 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-slate-200 text-slate-500 rounded-xl flex items-center justify-center font-bold text-xl">1</div>
-                <div>
-                  <h4 className="font-bold text-slate-700 text-lg">Cấp Trường</h4>
-                  <p className="text-sm text-slate-500 font-medium">Thu thập minh chứng và xét duyệt sơ bộ</p>
-                </div>
-              </div>
-              <CheckCircle className="text-slate-300" size={28} />
-            </div>
-            
-            <div className="p-5 rounded-2xl border-2 border-blue-100 flex items-center justify-between bg-blue-50/50">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-200 text-blue-700 rounded-xl flex items-center justify-center font-bold text-xl">2</div>
-                <div>
-                  <h4 className="font-bold text-blue-800 text-lg">Cấp Thành Phố</h4>
-                  <p className="text-sm text-blue-600/80 font-medium">Thẩm định hồ sơ do Trường đề xuất</p>
-                </div>
-              </div>
-              {isRole('CB_TINH') ? <div className="px-4 py-1.5 bg-blue-600 text-white text-sm font-bold rounded-full">Nhiệm vụ của bạn</div> : <CheckCircle className="text-blue-300" size={28} />}
-            </div>
-
-            <div className="p-5 rounded-2xl border-2 border-amber-100 flex items-center justify-between bg-amber-50/50">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-amber-200 text-amber-700 rounded-xl flex items-center justify-center font-bold text-xl">3</div>
-                <div>
-                  <h4 className="font-bold text-amber-800 text-lg">Cấp Trung Ương</h4>
-                  <p className="text-sm text-amber-700/80 font-medium">Phê duyệt danh hiệu Sinh viên 5 tốt toàn quốc</p>
-                </div>
-              </div>
-              {isRole('CB_TW') ? <div className="px-4 py-1.5 bg-amber-500 text-white text-sm font-bold rounded-full">Nhiệm vụ của bạn</div> : <Target className="text-amber-300" size={28} />}
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print-block">
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8 print:shadow-none print:border-slate-300 avoid-break">
+          <h3 className="font-black text-slate-800 text-xl mb-6 flex items-center gap-2">
+            <TrendingUp size={24} className="text-indigo-500 print:hidden" />
+            Tỉ lệ Trạng thái
+          </h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value">
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </div>
-      )}
+
+        {!isRole('CAN_BO_TRUONG') && (
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8 print:shadow-none print:border-slate-300 avoid-break">
+            <h3 className="font-black text-slate-800 text-xl mb-6">Phân cấp xét duyệt</h3>
+            <div className="flex flex-col gap-4">
+              <div className="p-5 rounded-2xl border-2 border-slate-100 flex items-center justify-between bg-slate-50 print:bg-white print:border-slate-200">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-slate-200 text-slate-500 rounded-xl flex items-center justify-center font-bold text-xl print:border print:border-slate-300">1</div>
+                  <div>
+                    <h4 className="font-bold text-slate-700 text-lg">Cấp Trường</h4>
+                    <p className="text-sm text-slate-500 font-medium">Thu thập minh chứng và xét duyệt sơ bộ</p>
+                  </div>
+                </div>
+                <CheckCircle className="text-slate-300" size={28} />
+              </div>
+              
+              <div className="p-5 rounded-2xl border-2 border-blue-100 flex items-center justify-between bg-blue-50/50 print:bg-white print:border-slate-200">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-blue-200 text-blue-700 rounded-xl flex items-center justify-center font-bold text-xl print:border print:border-slate-300">2</div>
+                  <div>
+                    <h4 className="font-bold text-blue-800 text-lg">Cấp Thành Phố</h4>
+                    <p className="text-sm text-blue-600/80 font-medium">Thẩm định hồ sơ do Trường đề xuất</p>
+                  </div>
+                </div>
+                {isRole('CB_TINH') ? <div className="px-4 py-1.5 bg-blue-600 text-white text-sm font-bold rounded-full print:bg-slate-200 print:text-black">Nhiệm vụ của bạn</div> : <CheckCircle className="text-blue-300" size={28} />}
+              </div>
+
+              <div className="p-5 rounded-2xl border-2 border-amber-100 flex items-center justify-between bg-amber-50/50 print:bg-white print:border-slate-200">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-amber-200 text-amber-700 rounded-xl flex items-center justify-center font-bold text-xl print:border print:border-slate-300">3</div>
+                  <div>
+                    <h4 className="font-bold text-amber-800 text-lg">Cấp Trung Ương</h4>
+                    <p className="text-sm text-amber-700/80 font-medium">Phê duyệt danh hiệu Sinh viên 5 tốt toàn quốc</p>
+                  </div>
+                </div>
+                {isRole('CB_TW') ? <div className="px-4 py-1.5 bg-amber-500 text-white text-sm font-bold rounded-full print:bg-slate-200 print:text-black">Nhiệm vụ của bạn</div> : <Target className="text-amber-300" size={28} />}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden page-break-before print:shadow-none print:border-none">
+        <div className="p-8 border-b border-slate-100 print:border-slate-800">
+          <h3 className="font-black text-slate-800 text-xl">Danh sách Hồ sơ Trình Tuyến</h3>
+          <p className="text-slate-500 mt-1 font-medium">Danh sách thống kê phục vụ công tác đối soát.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500 text-sm uppercase tracking-wider print:bg-white print:border-b-2 print:border-slate-800">
+                <th className="px-8 py-4 font-bold border-b border-slate-200">Sinh Viên</th>
+                <th className="px-8 py-4 font-bold border-b border-slate-200">Mã SV</th>
+                <th className="px-8 py-4 font-bold border-b border-slate-200">Trạng Thái</th>
+                <th className="px-8 py-4 font-bold border-b border-slate-200">Năm Học</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 print:divide-slate-300">
+              {appsList.length > 0 ? appsList.map(app => (
+                <tr key={app.id} className="hover:bg-slate-50 transition-colors avoid-break">
+                  <td className="px-8 py-4 font-bold text-slate-800">{app.nguoi_dung?.ho_ten}</td>
+                  <td className="px-8 py-4 text-slate-600 font-medium">{app.nguoi_dung?.msv}</td>
+                  <td className="px-8 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                      app.trang_thai.startsWith('CHO') ? 'bg-amber-100 text-amber-700 print:border print:border-amber-500' : 'bg-emerald-100 text-emerald-700 print:border print:border-emerald-500'
+                    }`}>
+                      {STATUS_CONFIG[app.trang_thai]?.label || app.trang_thai}
+                    </span>
+                  </td>
+                  <td className="px-8 py-4 text-slate-500">{app.quy_che?.nam_hoc}</td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan={4} className="px-8 py-12 text-center text-slate-500 font-medium">Không có hồ sơ nào.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
