@@ -6,8 +6,8 @@ export declare class ApplicationController {
     getMyApplications(req: any): Promise<({
         quy_che: {
             tieu_chis: {
-                quy_che_id: string;
                 id: string;
+                quy_che_id: string;
                 thu_tu: number | null;
                 ten_tieu_chi: string;
                 mo_ta: string | null;
@@ -23,9 +23,9 @@ export declare class ApplicationController {
             so_tieu_chi_dat: number;
         };
         minh_chungs: {
-            trang_thai: string;
             id: string;
             nguoi_dung_id: string;
+            trang_thai: string;
             created_at: Date;
             tieu_chi_id: string | null;
             loai: string;
@@ -36,11 +36,11 @@ export declare class ApplicationController {
             ly_do_loai: string | null;
         }[];
     } & {
-        quy_che_id: string;
-        trang_thai: import("shared-database").$Enums.TrangThaiHoSo;
         id: string;
         nguoi_dung_id: string;
+        quy_che_id: string;
         cap_hien_tai: string;
+        trang_thai: import("shared-database").$Enums.TrangThaiHoSo;
         ai_flag: string | null;
         ghi_chu_ai: string | null;
         khoa: boolean;
@@ -56,8 +56,8 @@ export declare class ApplicationController {
         };
         quy_che: {
             tieu_chis: {
-                quy_che_id: string;
                 id: string;
+                quy_che_id: string;
                 thu_tu: number | null;
                 ten_tieu_chi: string;
                 mo_ta: string | null;
@@ -73,9 +73,9 @@ export declare class ApplicationController {
             so_tieu_chi_dat: number;
         };
         minh_chungs: {
-            trang_thai: string;
             id: string;
             nguoi_dung_id: string;
+            trang_thai: string;
             created_at: Date;
             tieu_chi_id: string | null;
             loai: string;
@@ -86,11 +86,11 @@ export declare class ApplicationController {
             ly_do_loai: string | null;
         }[];
     } & {
-        quy_che_id: string;
-        trang_thai: import("shared-database").$Enums.TrangThaiHoSo;
         id: string;
         nguoi_dung_id: string;
+        quy_che_id: string;
         cap_hien_tai: string;
+        trang_thai: import("shared-database").$Enums.TrangThaiHoSo;
         ai_flag: string | null;
         ghi_chu_ai: string | null;
         khoa: boolean;
@@ -99,16 +99,16 @@ export declare class ApplicationController {
     })[]>;
     getQuyChes(): Promise<({
         don_vi: {
-            trang_thai: boolean;
             id: string;
+            trang_thai: boolean;
             created_at: Date;
             ten_don_vi: string;
             cap_do: import("shared-database").$Enums.CapDo;
             parent_id: string | null;
         };
         tieu_chis: {
-            quy_che_id: string;
             id: string;
+            quy_che_id: string;
             thu_tu: number | null;
             ten_tieu_chi: string;
             mo_ta: string | null;
@@ -123,11 +123,20 @@ export declare class ApplicationController {
         ngay_dong_cong: Date;
         so_tieu_chi_dat: number;
     })[]>;
+    saveQuyChe(dto: any, req: any): Promise<{
+        id: string;
+        created_at: Date;
+        don_vi_id: string;
+        nam_hoc: string;
+        ngay_mo_cong: Date;
+        ngay_dong_cong: Date;
+        so_tieu_chi_dat: number;
+    }>;
     getApplicationById(id: string, req: any): Promise<{
         quy_che: {
             tieu_chis: {
-                quy_che_id: string;
                 id: string;
+                quy_che_id: string;
                 thu_tu: number | null;
                 ten_tieu_chi: string;
                 mo_ta: string | null;
@@ -144,17 +153,17 @@ export declare class ApplicationController {
         };
         minh_chungs: ({
             tieu_chi: {
-                quy_che_id: string;
                 id: string;
+                quy_che_id: string;
                 thu_tu: number | null;
                 ten_tieu_chi: string;
                 mo_ta: string | null;
                 so_luong_yeu_cau: number;
             } | null;
         } & {
-            trang_thai: string;
             id: string;
             nguoi_dung_id: string;
+            trang_thai: string;
             created_at: Date;
             tieu_chi_id: string | null;
             loai: string;
@@ -165,11 +174,11 @@ export declare class ApplicationController {
             ly_do_loai: string | null;
         })[];
     } & {
-        quy_che_id: string;
-        trang_thai: import("shared-database").$Enums.TrangThaiHoSo;
         id: string;
         nguoi_dung_id: string;
+        quy_che_id: string;
         cap_hien_tai: string;
+        trang_thai: import("shared-database").$Enums.TrangThaiHoSo;
         ai_flag: string | null;
         ghi_chu_ai: string | null;
         khoa: boolean;
@@ -179,8 +188,8 @@ export declare class ApplicationController {
     create(dto: CreateApplicationDto, req: any): Promise<{
         quy_che: {
             tieu_chis: {
-                quy_che_id: string;
                 id: string;
+                quy_che_id: string;
                 thu_tu: number | null;
                 ten_tieu_chi: string;
                 mo_ta: string | null;
@@ -196,9 +205,9 @@ export declare class ApplicationController {
             so_tieu_chi_dat: number;
         };
         minh_chungs: {
-            trang_thai: string;
             id: string;
             nguoi_dung_id: string;
+            trang_thai: string;
             created_at: Date;
             tieu_chi_id: string | null;
             loai: string;
@@ -209,11 +218,11 @@ export declare class ApplicationController {
             ly_do_loai: string | null;
         }[];
     } & {
-        quy_che_id: string;
-        trang_thai: import("shared-database").$Enums.TrangThaiHoSo;
         id: string;
         nguoi_dung_id: string;
+        quy_che_id: string;
         cap_hien_tai: string;
+        trang_thai: import("shared-database").$Enums.TrangThaiHoSo;
         ai_flag: string | null;
         ghi_chu_ai: string | null;
         khoa: boolean;
@@ -221,11 +230,11 @@ export declare class ApplicationController {
         created_at: Date;
     }>;
     submitApplication(id: string, req: any, body: any): Promise<{
-        quy_che_id: string;
-        trang_thai: import("shared-database").$Enums.TrangThaiHoSo;
         id: string;
         nguoi_dung_id: string;
+        quy_che_id: string;
         cap_hien_tai: string;
+        trang_thai: import("shared-database").$Enums.TrangThaiHoSo;
         ai_flag: string | null;
         ghi_chu_ai: string | null;
         khoa: boolean;
@@ -233,11 +242,11 @@ export declare class ApplicationController {
         created_at: Date;
     }>;
     review(id: string, dto: ReviewApplicationDto, req: any): Promise<{
-        quy_che_id: string;
-        trang_thai: import("shared-database").$Enums.TrangThaiHoSo;
         id: string;
         nguoi_dung_id: string;
+        quy_che_id: string;
         cap_hien_tai: string;
+        trang_thai: import("shared-database").$Enums.TrangThaiHoSo;
         ai_flag: string | null;
         ghi_chu_ai: string | null;
         khoa: boolean;

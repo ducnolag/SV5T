@@ -55,8 +55,20 @@ let ApplicationService = class ApplicationService {
             [shared_database_1.VaiTro.ADMIN]: [shared_database_1.TrangThaiHoSo.CHO_DUYET_TRUONG, shared_database_1.TrangThaiHoSo.DAT_TRUONG, shared_database_1.TrangThaiHoSo.CHO_DUYET_TINH, shared_database_1.TrangThaiHoSo.DAT_TINH, shared_database_1.TrangThaiHoSo.CHO_DUYET_TW, shared_database_1.TrangThaiHoSo.DAT_SV5T],
         };
         const states = pendingStateMap[user.role] || [];
+        let userFilter = {};
+        if (user.role === shared_database_1.VaiTro.CB_TRUONG) {
+            userFilter = { nguoi_dung: { don_vi_id: user.don_vi_id } };
+        }
+        else if (user.role === shared_database_1.VaiTro.CB_TINH) {
+            userFilter = { nguoi_dung: { don_vi: { parent_id: user.don_vi_id } } };
+        }
+        else if (user.role === shared_database_1.VaiTro.CB_TW) {
+        }
         return this.prisma.hoSo.findMany({
-            where: { trang_thai: { in: states } },
+            where: {
+                trang_thai: { in: states },
+                ...userFilter
+            },
             include: {
                 nguoi_dung: { select: { id: true, ho_ten: true, msv: true, email: true } },
                 quy_che: { include: { tieu_chis: true } },
@@ -70,6 +82,57 @@ let ApplicationService = class ApplicationService {
             include: { tieu_chis: true, don_vi: true },
             orderBy: { created_at: 'desc' },
         });
+    }
+    async saveQuyChe(dto, userPayload) {
+        const dbUser = await this.prisma.nguoiDung.findUnique({ where: { id: userPayload.id } });
+        if (!dbUser)
+            throw new Error("Không tìm thấy người dùng");
+        let donViId = dbUser.don_vi_id;
+        if (!donViId && dbUser.vai_tro === shared_database_1.VaiTro.ADMIN) {
+            const truong = await this.prisma.donVi.findFirst({ where: { cap_do: 'TRUONG' } });
+            if (truong)
+                donViId = truong.id;
+        }
+        if (!donViId)
+            throw new Error("Cán bộ không có đơn vị trực thuộc");
+        const quyChe = await this.prisma.quyChe.upsert({
+            where: {
+                don_vi_id_nam_hoc: { don_vi_id: donViId, nam_hoc: dto.nam_hoc }
+            },
+            update: {
+                ngay_mo_cong: new Date(dto.ngay_mo_cong),
+                ngay_dong_cong: new Date(dto.ngay_dong_cong),
+            },
+            create: {
+                don_vi_id: donViId,
+                nam_hoc: dto.nam_hoc,
+                ngay_mo_cong: new Date(dto.ngay_mo_cong),
+                ngay_dong_cong: new Date(dto.ngay_dong_cong),
+            }
+        });
+        for (const tc of dto.tieu_chis) {
+            const existingTc = await this.prisma.tieuChi.findFirst({
+                where: { quy_che_id: quyChe.id, ten_tieu_chi: tc.ten_tieu_chi }
+            });
+            if (existingTc) {
+                await this.prisma.tieuChi.update({
+                    where: { id: existingTc.id },
+                    data: { mo_ta: tc.mo_ta, thu_tu: tc.thu_tu, so_luong_yeu_cau: tc.so_luong_yeu_cau }
+                });
+            }
+            else {
+                await this.prisma.tieuChi.create({
+                    data: {
+                        quy_che_id: quyChe.id,
+                        ten_tieu_chi: tc.ten_tieu_chi,
+                        mo_ta: tc.mo_ta,
+                        thu_tu: tc.thu_tu,
+                        so_luong_yeu_cau: tc.so_luong_yeu_cau
+                    }
+                });
+            }
+        }
+        return quyChe;
     }
     async createDraft(userId, dto) {
         const existing = await this.prisma.hoSo.findUnique({

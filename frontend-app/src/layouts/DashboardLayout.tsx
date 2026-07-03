@@ -1,7 +1,7 @@
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../utils/useSocket';
-import { Bell, LogOut, Home, CheckSquare, Award, FileText, Settings, X, MessageCircle, ChevronRight, User } from 'lucide-react';
+import { Bell, LogOut, Home, CheckSquare, Award, FileText, X, MessageCircle, ChevronRight, User } from 'lucide-react';
 import { useState } from 'react';
 import ChatbotWidget from '../components/ChatbotWidget';
 
@@ -31,14 +31,14 @@ export default function DashboardLayout() {
   const [showNotif, setShowNotif] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
 
-  const isStaff = user && ['CB_TRUONG', 'CB_TINH', 'CB_TW', 'LCH_CLB', 'ADMIN'].includes(user.role);
+  const isStaff = user && ['CB_TRUONG', 'CB_TINH', 'CB_TW', 'ADMIN'].includes(user.role);
 
   const navItems = [
     { name: 'Tổng quan', path: '/', icon: Home, show: true },
-    { name: 'Quản lý Hoạt động', path: '/activities', icon: CheckSquare, show: isStaff },
-    { name: 'Minh Chứng', path: '/proofs', icon: Award, show: user?.role === 'SINH_VIEN' || user?.role === 'CB_TRUONG' || user?.role === 'ADMIN' },
-    { name: 'Hồ Sơ SV5T', path: '/applications', icon: FileText, show: true },
-    { name: 'Quản trị', path: '/admin', icon: Settings, show: user?.role === 'ADMIN' || user?.role === 'CB_TRUONG' },
+    { name: 'Duyệt hồ sơ', path: '/applications', icon: CheckSquare, show: isStaff },
+    { name: 'Minh Chứng', path: '/proofs', icon: Award, show: user?.role === 'SINH_VIEN' },
+    { name: 'Hồ Sơ SV5T', path: '/applications', icon: FileText, show: user?.role === 'SINH_VIEN' },
+    { name: 'Quản lý Quy chế', path: '/rules', icon: FileText, show: isStaff },
     { name: 'Hồ Sơ Cá Nhân', path: '/profile', icon: User, show: true },
   ].filter(i => i.show);
 

@@ -106,17 +106,36 @@ let AuthService = class AuthService {
         const encryptedCccd = `ENCRYPTED_${dto.cccd}`;
         let actualDonViId = undefined;
         if (dto.don_vi_id) {
+            let parentId = null;
+            if (dto.province) {
+                let tinhDonVi = await this.prisma.donVi.findFirst({
+                    where: { ten_don_vi: dto.province, cap_do: 'TINH' }
+                });
+                if (!tinhDonVi) {
+                    tinhDonVi = await this.prisma.donVi.create({
+                        data: { ten_don_vi: dto.province, cap_do: 'TINH' }
+                    });
+                }
+                parentId = tinhDonVi.id;
+            }
             const existingDonVi = await this.prisma.donVi.findFirst({
                 where: { ten_don_vi: dto.don_vi_id, cap_do: 'TRUONG' }
             });
             if (existingDonVi) {
                 actualDonViId = existingDonVi.id;
+                if (!existingDonVi.parent_id && parentId) {
+                    await this.prisma.donVi.update({
+                        where: { id: existingDonVi.id },
+                        data: { parent_id: parentId }
+                    });
+                }
             }
             else {
                 const newDonVi = await this.prisma.donVi.create({
                     data: {
                         ten_don_vi: dto.don_vi_id,
                         cap_do: 'TRUONG',
+                        parent_id: parentId,
                     }
                 });
                 actualDonViId = newDonVi.id;
@@ -343,11 +362,42 @@ let AuthService = class AuthService {
         return true;
     }
     async updateProfile(userId, data) {
+        let donViId = undefined;
+        if (data.don_vi_id && data.province) {
+            let tinh = await this.prisma.donVi.findFirst({
+                where: { ten_don_vi: data.province, cap_do: 'TINH' }
+            });
+            if (!tinh) {
+                tinh = await this.prisma.donVi.create({
+                    data: { ten_don_vi: data.province, cap_do: 'TINH' }
+                });
+            }
+            let truong = await this.prisma.donVi.findFirst({
+                where: { ten_don_vi: data.don_vi_id, cap_do: 'TRUONG' }
+            });
+            if (!truong) {
+                truong = await this.prisma.donVi.create({
+                    data: {
+                        ten_don_vi: data.don_vi_id,
+                        cap_do: 'TRUONG',
+                        parent_id: tinh.id
+                    }
+                });
+            }
+            else if (!truong.parent_id) {
+                truong = await this.prisma.donVi.update({
+                    where: { id: truong.id },
+                    data: { parent_id: tinh.id }
+                });
+            }
+            donViId = truong.id;
+        }
         const updatedUser = await this.prisma.nguoiDung.update({
             where: { id: userId },
             data: {
-                msv: data.msv,
-                so_dien_thoai: data.so_dien_thoai,
+                msv: data.msv === "" ? null : (data.msv !== undefined ? data.msv : undefined),
+                so_dien_thoai: data.so_dien_thoai === "" ? null : (data.so_dien_thoai !== undefined ? data.so_dien_thoai : undefined),
+                don_vi_id: donViId || undefined,
             },
         });
         return {
@@ -365,7 +415,8 @@ let AuthService = class AuthService {
     }
     async getProfile(userId) {
         const user = await this.prisma.nguoiDung.findUnique({
-            where: { id: userId }
+            where: { id: userId },
+            include: { don_vi: true }
         });
         if (!user)
             throw new common_1.BadRequestException('User not found');
@@ -378,6 +429,7 @@ let AuthService = class AuthService {
             khoa: user.khoa || '',
             vai_tro: user.vai_tro,
             don_vi_id: user.don_vi_id,
+            ten_don_vi: user.don_vi?.ten_don_vi || '',
         };
     }
 };

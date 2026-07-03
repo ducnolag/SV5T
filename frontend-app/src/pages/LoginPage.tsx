@@ -4,9 +4,11 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
 
+
+
 export default function LoginPage() {
-  const [email, setEmail] = useState('sinhvien1@vnu.edu.vn');
-  const [password, setPassword] = useState('123456');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -84,15 +86,6 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
-
-  const TEST_ACCOUNTS = [
-    { label: 'Sinh viên', email: 'sinhvien1@vnu.edu.vn' },
-    { label: 'LCH/CLB', email: 'lch@vnu.edu.vn' },
-    { label: 'CB Trường', email: 'cbtruong@vnu.edu.vn' },
-    { label: 'CB Tỉnh', email: 'cbtinh@sv5t.vn' },
-    { label: 'CB TW', email: 'cbtw@sv5t.vn' },
-    { label: 'Admin', email: 'admin@sv5t.vn' },
-  ];
 
   return (
     <div className="min-h-screen flex bg-slate-50 font-sans">
@@ -285,20 +278,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div className="mt-10 pt-8 border-t border-slate-100 relative">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
-              Tài khoản trải nghiệm
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-              {TEST_ACCOUNTS.map(acc => (
-                <button key={acc.label} onClick={() => { setEmail(acc.email); setPassword('123456'); }}
-                  className="py-2 px-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors text-center hover:border-slate-300">
-                  {acc.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
+          {/* User requested to remove this test account auto-fill section completely to make it more professional. I'll just remove the TEST_ACCOUNTS render. */}
         </div>
       </div>
     </div>

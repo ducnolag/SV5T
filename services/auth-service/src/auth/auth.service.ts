@@ -77,16 +77,39 @@ export class AuthService {
 
     let actualDonViId = undefined;
     if (dto.don_vi_id) {
+      let parentId = null;
+
+      // Handle Province (TINH) if provided
+      if (dto.province) {
+        let tinhDonVi = await this.prisma.donVi.findFirst({
+          where: { ten_don_vi: dto.province, cap_do: 'TINH' }
+        });
+        if (!tinhDonVi) {
+          tinhDonVi = await this.prisma.donVi.create({
+            data: { ten_don_vi: dto.province, cap_do: 'TINH' }
+          });
+        }
+        parentId = tinhDonVi.id;
+      }
+
       const existingDonVi = await this.prisma.donVi.findFirst({
         where: { ten_don_vi: dto.don_vi_id, cap_do: 'TRUONG' }
       });
       if (existingDonVi) {
         actualDonViId = existingDonVi.id;
+        // Update parent_id if it was not set
+        if (!existingDonVi.parent_id && parentId) {
+          await this.prisma.donVi.update({
+            where: { id: existingDonVi.id },
+            data: { parent_id: parentId }
+          });
+        }
       } else {
         const newDonVi = await this.prisma.donVi.create({
           data: {
             ten_don_vi: dto.don_vi_id,
             cap_do: 'TRUONG',
+            parent_id: parentId,
           }
         });
         actualDonViId = newDonVi.id;
@@ -356,11 +379,44 @@ export class AuthService {
   }
 
   async updateProfile(userId: string, data: any) {
+    let donViId = undefined;
+
+    if (data.don_vi_id && data.province) {
+      let tinh = await this.prisma.donVi.findFirst({
+        where: { ten_don_vi: data.province, cap_do: 'TINH' }
+      });
+      if (!tinh) {
+        tinh = await this.prisma.donVi.create({
+          data: { ten_don_vi: data.province, cap_do: 'TINH' }
+        });
+      }
+
+      let truong = await this.prisma.donVi.findFirst({
+        where: { ten_don_vi: data.don_vi_id, cap_do: 'TRUONG' }
+      });
+      if (!truong) {
+        truong = await this.prisma.donVi.create({
+          data: { 
+            ten_don_vi: data.don_vi_id, 
+            cap_do: 'TRUONG',
+            parent_id: tinh.id 
+          }
+        });
+      } else if (!truong.parent_id) {
+        truong = await this.prisma.donVi.update({
+          where: { id: truong.id },
+          data: { parent_id: tinh.id }
+        });
+      }
+      donViId = truong.id;
+    }
+
     const updatedUser = await this.prisma.nguoiDung.update({
       where: { id: userId },
       data: {
-        msv: data.msv,
-        so_dien_thoai: data.so_dien_thoai,
+        msv: data.msv === "" ? null : (data.msv !== undefined ? data.msv : undefined),
+        so_dien_thoai: data.so_dien_thoai === "" ? null : (data.so_dien_thoai !== undefined ? data.so_dien_thoai : undefined),
+        don_vi_id: donViId || undefined,
       },
     });
     
@@ -380,7 +436,8 @@ export class AuthService {
 
   async getProfile(userId: string) {
     const user = await this.prisma.nguoiDung.findUnique({
-      where: { id: userId }
+      where: { id: userId },
+      include: { don_vi: true }
     });
     if (!user) throw new BadRequestException('User not found');
     return {
@@ -392,6 +449,7 @@ export class AuthService {
       khoa: (user as any).khoa || '',
       vai_tro: user.vai_tro,
       don_vi_id: user.don_vi_id,
+      ten_don_vi: (user as any).don_vi?.ten_don_vi || '',
     };
   }
 }

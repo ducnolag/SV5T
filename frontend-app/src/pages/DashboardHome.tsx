@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
-import { Clock, TrendingUp, CheckCircle, AlertCircle, Zap, ArrowRight, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { Clock, TrendingUp, CheckCircle, AlertCircle, Zap, ArrowRight, ChevronLeft, ChevronRight, ExternalLink, FileText } from 'lucide-react';
 
 const CRITERIA_NAMES = ['Học tập tốt', 'Đạo đức tốt', 'Thể lực tốt', 'Tình nguyện tốt', 'Hội nhập tốt'];
 const CRITERIA_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -82,7 +82,7 @@ export default function DashboardHome() {
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0 });
   const [criteriaProgress, setCriteriaProgress] = useState([0, 0, 0, 0, 0]);
-  const deadline = new Date('2026-10-15T23:59:59');
+  const [deadline, setDeadline] = useState<Date | null>(null);
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -92,6 +92,12 @@ export default function DashboardHome() {
   };
 
   useEffect(() => {
+    api.get('/applications/quy-ches').then(res => {
+      if (res.data && res.data.length > 0) {
+        setDeadline(new Date(res.data[0].ngay_dong_cong));
+      }
+    }).catch(() => {});
+
     if (isRole('SINH_VIEN')) {
       api.get('/applications/my').then(r => {
         if (r.data[0]) {
@@ -313,9 +319,15 @@ export default function DashboardHome() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="bg-white rounded-lg p-6 border border-slate-200 shadow-sm">
-        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Hệ thống Quản lý</h2>
-        <p className="text-slate-500 mt-1">Trung tâm xét duyệt và thống kê hồ sơ trực tuyến</p>
+      <div className="bg-white rounded-lg p-6 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Hệ thống Quản lý</h2>
+          <p className="text-slate-500 mt-1">Trung tâm xét duyệt và thống kê hồ sơ trực tuyến</p>
+        </div>
+        <button className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 font-semibold rounded-lg hover:bg-indigo-100 transition-colors">
+          <FileText size={18} />
+          Xuất báo cáo PDF
+        </button>
       </div>
 
       <div className="grid grid-cols-3 gap-6">

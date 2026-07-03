@@ -35,6 +35,8 @@ class RegisterDto {
     vai_tro;
     don_vi_id;
     so_dien_thoai;
+    province;
+    khoa;
 }
 exports.RegisterDto = RegisterDto;
 __decorate([
@@ -53,7 +55,7 @@ __decorate([
     __metadata("design:type", String)
 ], RegisterDto.prototype, "mat_khau", void 0);
 __decorate([
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "msv", void 0);
@@ -77,4 +79,14 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "so_dien_thoai", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], RegisterDto.prototype, "province", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], RegisterDto.prototype, "khoa", void 0);
 //# sourceMappingURL=dto.js.map

@@ -23,9 +23,9 @@ export class RegisterDto {
   @MinLength(6)
   mat_khau: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  msv: string;
+  msv?: string;
 
   @IsNotEmpty()
   @IsString()
@@ -42,4 +42,12 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   so_dien_thoai?: string;
+
+  @IsOptional()
+  @IsString()
+  province?: string;
+
+  @IsOptional()
+  @IsString()
+  khoa?: string;
 }

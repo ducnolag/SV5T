@@ -67,23 +67,52 @@ app.post('/api/ai/chat', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
 
   try {
+    // Lấy quy chế mới nhất từ Database thông qua application-service
+    let activeRules = [];
+    let namHoc = '2025-2026';
+    try {
+      const response = await axios.get('http://localhost:3006/applications/quy-ches');
+      if (response.data && response.data.length > 0) {
+        namHoc = response.data[0].nam_hoc;
+        activeRules = response.data[0].tieu_chis;
+      }
+    } catch (e) {
+      console.error('Lỗi khi gọi rules API, dùng fallback:', e.message);
+    }
+
     let reply = "Xin lỗi, tôi chưa hiểu rõ ý bạn.";
     const lowerMsg = message.toLowerCase();
     
+    // Hàm tìm tiêu chí theo từ khóa
+    const findRule = (keyword) => {
+      const rule = activeRules.find(r => r.ten_tieu_chi.toLowerCase().includes(keyword));
+      return rule ? rule.mo_ta : null;
+    };
+    
     if (lowerMsg.includes("học tập") || lowerMsg.includes("điểm")) {
-      reply = "Để đạt tiêu chí **Học tập tốt** theo Quy chế SV5T năm 2025-2026, bạn cần đạt:\n\n- Điểm trung bình chung học tập cả năm đạt từ 3.2/4.0 trở lên.\n- Và đạt thêm ít nhất 01 trong các tiêu chí: Nhận học bổng khuyến khích; Có đề tài NCKH đạt giải cấp Khoa trở lên; Có bài tham luận/nghiên cứu đăng kỷ yếu, tạp chí; Đạt giải cuộc thi học thuật/ý tưởng khởi nghiệp từ cấp Học viện; Là thành viên tích cực CLB học thuật.";
+      const ruleDesc = findRule("học tập");
+      reply = ruleDesc ? `Theo Quy chế SV5T năm ${namHoc}, tiêu chí **Học tập tốt** yêu cầu:\n\n${ruleDesc}` : 
+      `Để đạt tiêu chí **Học tập tốt** theo Quy chế SV5T năm ${namHoc}, bạn cần đạt:\n\n- Điểm trung bình chung học tập cả năm đạt từ 3.2/4.0 trở lên.\n- Và đạt thêm ít nhất 01 trong các tiêu chí phụ.`;
     } else if (lowerMsg.includes("đạo đức")) {
-      reply = "Đối với tiêu chí **Đạo đức tốt**, bạn cần:\n\n- Điểm rèn luyện đạt từ 80 điểm trở lên;\n- Không vi phạm pháp luật, quy chế Nhà trường;\n- Và đạt thêm ít nhất 01 tiêu chí phụ: Tham gia cuộc thi tìm hiểu Mác-Lênin; Là Đảng viên hoàn thành tốt nhiệm vụ; Tham gia thi về Đảng, Đoàn-Hội; Là thanh niên tiêu biểu/tiên tiến.";
+      const ruleDesc = findRule("đạo đức");
+      reply = ruleDesc ? `Theo Quy chế SV5T năm ${namHoc}, tiêu chí **Đạo đức tốt** yêu cầu:\n\n${ruleDesc}` :
+      `Đối với tiêu chí **Đạo đức tốt**, bạn cần:\n\n- Điểm rèn luyện đạt từ 80 điểm trở lên;\n- Không vi phạm pháp luật, quy chế Nhà trường.`;
     } else if (lowerMsg.includes("tình nguyện")) {
-      reply = "Tiêu chí **Tình nguyện tốt** yêu cầu bạn đạt 01 trong 02 tiêu chí sau:\n\n- Tham gia ít nhất 03 ngày tình nguyện/năm học (01 lần hiến máu = 01 ngày; 01 ngày Chủ nhật xanh/Mùa hè xanh = 01 ngày).\n- Được khen thưởng từ cấp Khoa trở lên về hoạt động tình nguyện HOẶC là người sáng lập/đồng sáng lập dự án tình nguyện.";
+      const ruleDesc = findRule("tình nguyện");
+      reply = ruleDesc ? `Theo Quy chế SV5T năm ${namHoc}, tiêu chí **Tình nguyện tốt** yêu cầu:\n\n${ruleDesc}` :
+      `Tiêu chí **Tình nguyện tốt** yêu cầu bạn đạt 01 trong 02 tiêu chí sau:\n\n- Tham gia ít nhất 03 ngày tình nguyện/năm học.\n- Được khen thưởng từ cấp Khoa trở lên về hoạt động tình nguyện.`;
     } else if (lowerMsg.includes("thể lực")) {
-      reply = "Với **Thể lực tốt**, bạn đạt 01 trong các tiêu chí:\n\n- Đạt danh hiệu 'Sinh viên khỏe' cấp Học viện.\n- Tham gia/đạt giải hoạt động thể thao do Học viện, Đoàn-Hội hoặc địa phương tổ chức.\n- Là thành viên tích cực của ít nhất 01 CLB thể thao của Học viện.";
+      const ruleDesc = findRule("thể lực");
+      reply = ruleDesc ? `Theo Quy chế SV5T năm ${namHoc}, tiêu chí **Thể lực tốt** yêu cầu:\n\n${ruleDesc}` :
+      `Với **Thể lực tốt**, bạn đạt 01 trong các tiêu chí:\n\n- Đạt danh hiệu 'Sinh viên khỏe' cấp Học viện.\n- Tham gia/đạt giải hoạt động thể thao.`;
     } else if (lowerMsg.includes("hội nhập")) {
-      reply = "Tiêu chí **Hội nhập tốt** yêu cầu:\n\n- Đạt chứng chỉ tiếng Anh B1 (hoặc điểm học phần ngoại ngữ tích lũy từ 3.0/4.0 hoặc 7.5/10 trở lên).\n- Và đạt thêm đồng thời ít nhất 02 tiêu chí phụ: Ban chủ nhiệm CLB ngoại ngữ; Giao lưu quốc tế; Cuộc thi hội nhập/ngoại ngữ; Khóa kỹ năng thực hành xã hội; Được khen thưởng công tác Đoàn/Hội.";
+      const ruleDesc = findRule("hội nhập");
+      reply = ruleDesc ? `Theo Quy chế SV5T năm ${namHoc}, tiêu chí **Hội nhập tốt** yêu cầu:\n\n${ruleDesc}` :
+      `Tiêu chí **Hội nhập tốt** yêu cầu:\n\n- Đạt chứng chỉ tiếng Anh B1 (hoặc điểm học phần ngoại ngữ tích lũy từ 3.0/4.0 hoặc 7.5/10 trở lên).`;
     } else if (lowerMsg.includes("thời gian") || lowerMsg.includes("hạn")) {
-      reply = "Hiện tại là thời gian thu thập minh chứng cho năm học 2025-2026. Bạn hãy tranh thủ tích lũy các giấy chứng nhận ngay từ bây giờ nhé!";
+      reply = `Hiện tại là thời gian thu thập minh chứng cho năm học ${namHoc}. Bạn hãy tranh thủ cập nhật các minh chứng nhé!`;
     } else {
-      reply = "Dựa trên Quy chế SV5T Học viện Ngân hàng 2025-2026, để đạt danh hiệu bạn cần hoàn thiện đủ 5 tiêu chí: Học tập tốt, Đạo đức tốt, Thể lực tốt, Tình nguyện tốt và Hội nhập tốt. Bạn cần hỏi chi tiết về tiêu chí nào?";
+      reply = `Dựa trên Quy chế SV5T năm ${namHoc}, để đạt danh hiệu bạn cần hoàn thiện đủ 5 tiêu chí. Bạn cần hỏi chi tiết về tiêu chí nào?`;
     }
 
     const chunks = reply.split(' ');
@@ -107,6 +136,33 @@ app.post('/api/ai/chat', async (req, res) => {
     res.write('data: {"error": "Lỗi kết nối AI"}\n\n');
     res.end();
   }
+});
+
+// 1.5 Extract Criteria (Smart Parser)
+app.post('/api/ai/extract-criteria', (req, res) => {
+  const { text } = req.body;
+  if (!text) return res.json({ count: 1 });
+  
+  let count = 0;
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const lowerLine = line.toLowerCase().trim();
+    if (lowerLine.startsWith('-') || lowerLine.startsWith('+') || lowerLine.startsWith('*') || /^\d+\./.test(lowerLine)) {
+      if (lowerLine.includes('không vi phạm')) {
+        continue; // Bỏ qua tiêu chí không vi phạm vì không cần nộp minh chứng
+      }
+      
+      const match = lowerLine.match(/(ít nhất|chọn)\s+0?(\d+)/);
+      if (match) {
+        count += parseInt(match[2], 10);
+      } else if (!lowerLine.includes('trong các tiêu chí sau')) {
+        count += 1;
+      }
+    }
+  }
+  
+  if (count === 0) count = 1;
+  res.json({ count });
 });
 
 // 2. OCR SmartReader

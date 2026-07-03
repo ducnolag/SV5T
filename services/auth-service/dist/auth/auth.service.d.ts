@@ -66,5 +66,6 @@ export declare class AuthService {
         khoa: any;
         vai_tro: import("shared-database").$Enums.VaiTro;
         don_vi_id: string | null;
+        ten_don_vi: any;
     }>;
 }

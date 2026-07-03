@@ -9,12 +9,13 @@ interface DonVi {
   id: string;
   ten_don_vi: string;
   cap_do: string;
+  province?: string;
 }
 
 export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({ 
-    email: '', mat_khau: '', ho_ten: '', msv: '', cccd: '', don_vi_id: '', vai_tro: 'SINH_VIEN', so_dien_thoai: '' 
+    email: '', mat_khau: '', ho_ten: '', msv: '', cccd: '', don_vi_id: '', province: '', vai_tro: 'SINH_VIEN', so_dien_thoai: '' 
   });
   
   const [files, setFiles] = useState<{
@@ -33,12 +34,17 @@ export default function RegisterPage() {
   useEffect(() => {
     fetch('/vietnam_universities.json')
       .then(res => res.json())
-      .then((data: string[]) => {
-        const vnUnis = data.map(name => ({ id: name, ten_don_vi: name, cap_do: 'TRUONG' }));
+      .then((data: any[]) => {
+        const vnUnis = data.map(item => ({ 
+          id: item.name, 
+          ten_don_vi: item.name, 
+          cap_do: 'TRUONG',
+          province: item.province 
+        }));
         setUnits(vnUnis);
       })
       .catch(() => {
-        setUnits([{ id: 'DHQGHN', ten_don_vi: 'Đại học Quốc gia Hà Nội', cap_do: 'TRUONG' }]);
+        setUnits([{ id: 'DHQGHN', ten_don_vi: 'Đại học Quốc gia Hà Nội', cap_do: 'TRUONG', province: 'Thành phố Hà Nội' }]);
       });
   }, []);
 
@@ -255,9 +261,9 @@ export default function RegisterPage() {
                     </div>
                     <Select
                       placeholder="Tìm kiếm và chọn trường..."
-                      options={units.map(u => ({ value: u.id, label: u.ten_don_vi }))}
+                      options={units.map(u => ({ value: u.id, label: u.ten_don_vi, province: u.province }))}
                       value={formData.don_vi_id ? { value: formData.don_vi_id, label: formData.don_vi_id } : null}
-                      onChange={(selectedOption: any) => setFormData({ ...formData, don_vi_id: selectedOption?.value || '' })}
+                      onChange={(selectedOption: any) => setFormData({ ...formData, don_vi_id: selectedOption?.value || '', province: selectedOption?.province || '' })}
                       filterOption={(candidate, input) => {
                         if (!input) return true;
                         const removeAccents = (str: string) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();

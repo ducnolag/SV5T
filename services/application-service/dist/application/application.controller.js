@@ -31,6 +31,9 @@ let ApplicationController = class ApplicationController {
     getQuyChes() {
         return this.appService.getQuyChes();
     }
+    saveQuyChe(dto, req) {
+        return this.appService.saveQuyChe(dto, req.user);
+    }
     getApplicationById(id, req) {
         return this.appService.getApplicationById(id, req.user);
     }
@@ -68,6 +71,14 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], ApplicationController.prototype, "getQuyChes", null);
+__decorate([
+    (0, common_1.Post)('quy-ches'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], ApplicationController.prototype, "saveQuyChe", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),

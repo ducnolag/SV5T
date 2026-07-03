@@ -23,6 +23,11 @@ export class ApplicationController {
     return this.appService.getQuyChes();
   }
 
+  @Post('quy-ches')
+  saveQuyChe(@Body() dto: any, @Request() req: any) {
+    return this.appService.saveQuyChe(dto, req.user);
+  }
+
   @Get(':id')
   getApplicationById(@Param('id') id: string, @Request() req: any) {
     return this.appService.getApplicationById(id, req.user);

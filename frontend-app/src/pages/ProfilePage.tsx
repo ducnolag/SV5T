@@ -1,17 +1,39 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
-import { User, Mail, CreditCard, Save, CheckCircle } from 'lucide-react';
+import { User, Mail, CreditCard, Save, CheckCircle, Building } from 'lucide-react';
+import Select from 'react-select';
 
 export default function ProfilePage() {
-  const { user } = useAuth(); // Assuming login or a similar function updates local storage context
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     ho_ten: '',
     msv: '',
     so_dien_thoai: '',
+    ten_don_vi: '',
+    don_vi_id: '',
+    province: '',
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [units, setUnits] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/vietnam_universities.json')
+      .then(res => res.json())
+      .then((data: any[]) => {
+        const vnUnis = data.map(item => ({ 
+          id: item.name, 
+          ten_don_vi: item.name, 
+          cap_do: 'TRUONG',
+          province: item.province 
+        }));
+        setUnits(vnUnis);
+      })
+      .catch(() => {
+        console.warn('Could not load universities json');
+      });
+  }, []);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -21,6 +43,9 @@ export default function ProfilePage() {
           ho_ten: res.data.ho_ten || '',
           msv: res.data.msv || '',
           so_dien_thoai: res.data.so_dien_thoai || '',
+          ten_don_vi: res.data.ten_don_vi || '',
+          don_vi_id: res.data.don_vi_id || '',
+          province: '',
         });
       } catch (err) {
         // Fallback to local storage user
@@ -29,6 +54,9 @@ export default function ProfilePage() {
             ho_ten: user.ho_ten || '',
             msv: (user as any).msv || '',
             so_dien_thoai: (user as any).so_dien_thoai || '',
+            ten_don_vi: '',
+            don_vi_id: '',
+            province: '',
           });
         }
       }
@@ -137,21 +165,70 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Mã Sinh Viên</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <CreditCard size={18} />
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  Trường / Đơn vị trực thuộc
+                </label>
+                {user?.role === 'SINH_VIEN' ? (
+                  <div className="relative opacity-70">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <Building size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      disabled
+                      value={formData.ten_don_vi}
+                      className="pl-10 w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-sm font-medium cursor-not-allowed"
+                    />
                   </div>
-                  <input
-                    type="text"
-                    name="msv"
-                    value={formData.msv}
-                    onChange={handleChange}
-                    className="pl-10 w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                    placeholder="VD: 20020000"
-                  />
-                </div>
+                ) : (
+                  <div className="relative z-50">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 z-10">
+                      <Building size={18} />
+                    </div>
+                    <Select
+                      placeholder={formData.ten_don_vi || "Tìm kiếm và chọn trường..."}
+                      options={units.map(u => ({ value: u.id, label: u.ten_don_vi, province: u.province }))}
+                      value={formData.don_vi_id ? { value: formData.don_vi_id, label: formData.ten_don_vi || formData.don_vi_id } : null}
+                      onChange={(selectedOption: any) => setFormData({ ...formData, don_vi_id: selectedOption?.value || '', ten_don_vi: selectedOption?.label || '', province: selectedOption?.province || '' })}
+                      filterOption={(candidate, input) => {
+                        if (!input) return true;
+                        const removeAccents = (str: string) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+                        return removeAccents(candidate.label).includes(removeAccents(input));
+                      }}
+                      styles={{
+                        control: (base) => ({
+                          ...base,
+                          paddingLeft: '2rem',
+                          paddingTop: '0.25rem',
+                          paddingBottom: '0.25rem',
+                          borderRadius: '0.75rem',
+                          borderColor: '#e2e8f0',
+                          backgroundColor: '#f8fafc',
+                          boxShadow: 'none'
+                        })
+                      }}
+                    />
+                  </div>
+                )}
               </div>
+
+              {user?.role === 'SINH_VIEN' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700">Mã Sinh Viên</label>
+                  <div className="relative opacity-70">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <CreditCard size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      name="msv"
+                      disabled
+                      value={formData.msv}
+                      className="pl-10 w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-sm font-medium cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between">

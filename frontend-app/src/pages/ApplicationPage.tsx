@@ -35,7 +35,7 @@ export default function ApplicationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [appDetail, setAppDetail] = useState<any>(null);
-  const [view, setView] = useState<'my' | 'pending'>('my');
+  const view = isRole('SINH_VIEN') ? 'my' : 'pending';
   const [searchQuery, setSearchQuery] = useState('');
   const [userProofs, setUserProofs] = useState<any[]>([]);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
@@ -137,8 +137,8 @@ export default function ApplicationPage() {
       // Lấy tất cả minh chứng hợp lệ (đã được AI xác nhận) của người dùng liên quan đến quy chế này
       const validProofIds = userProofs.filter(p => appDetail.quy_che.tieu_chis.some((tc:any) => tc.id === p.tieu_chi_id) && (p.trang_thai === 'DA_XAC_THUC' || p.trang_thai === 'DA_DUYET' || (p.ai_xac_thuc_muc_do && p.ai_xac_thuc_muc_do >= 80))).map(p => p.id);
       await api.put(`/applications/${id}/submit`, { minh_chung_ids: validProofIds });
-      setSelectedAppId(null);
       fetchAll();
+      fetchDetail(id); // Stay on page and update
       alert('Nộp hồ sơ thành công!');
     } catch (e: any) {
       alert(e.response?.data?.message || 'Lỗi nộp hồ sơ');
@@ -188,12 +188,11 @@ export default function ApplicationPage() {
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
             <div>
               <div className="flex items-center gap-3 mb-3">
-                <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border ${STATUS_BADGE[appDetail.trang_thai]?.cls}`}>
-                  {STATUS_BADGE[appDetail.trang_thai]?.label}
-                </span>
-                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border bg-indigo-50 text-indigo-700 border-indigo-200">
-                  <Target size={12} /> Tiến độ: {appDetail.quy_che?.tieu_chis?.length ? Math.round((Math.max(0, appDetail.quy_che.tieu_chis.length - missingCount) / appDetail.quy_che.tieu_chis.length) * 100) : 0}%
-                </span>
+                {appDetail.trang_thai !== 'DANG_TAO' && (
+                  <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border ${STATUS_BADGE[appDetail.trang_thai]?.cls}`}>
+                    {STATUS_BADGE[appDetail.trang_thai]?.label}
+                  </span>
+                )}
               </div>
               <h2 className="text-3xl font-black text-slate-800 tracking-tight">Dashboard Mục Tiêu SV5T</h2>
               <div className="flex items-center gap-4 text-sm font-medium text-slate-500 mt-2">
@@ -294,19 +293,10 @@ export default function ApplicationPage() {
                         {isCompleted && <span className="text-[10px] font-black uppercase bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full ml-2">Đã hoàn thành</span>}
                       </div>
                       <div className="pl-13 ml-13">
-                        <p className="text-sm text-slate-500 mb-3 font-medium">{tc.mo_ta}</p>
-                        <div className="bg-gradient-to-r from-slate-50 to-indigo-50/30 border border-indigo-100/60 rounded-xl p-4 w-full xl:w-4/5 shadow-sm">
-                          <p className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-2 flex items-center gap-1.5"><ShieldCheck size={16} className="text-indigo-500"/> Điều kiện xét duyệt (Quy chế 2025-2026)</p>
+                        <div className="bg-gradient-to-r from-slate-50 to-indigo-50/30 border border-indigo-100/60 rounded-xl p-4 w-full xl:w-4/5 shadow-sm mb-4">
+                          <p className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-2 flex items-center gap-1.5"><ShieldCheck size={16} className="text-indigo-500"/> Điều kiện xét duyệt (Quy chế {appDetail.quy_che?.nam_hoc || 'Hiện hành'})</p>
                           <p className="text-[13px] md:text-sm font-medium text-slate-700 ml-5 leading-relaxed whitespace-pre-line">
-                            {(() => {
-                              const name = tc.ten_tieu_chi || '';
-                              if (name.includes('Học tập')) return '- Điểm trung bình chung học tập cả năm đạt từ 3.2/4.0 trở lên.\n- Sinh viên phải đạt thêm ít nhất 01 trong các tiêu chí sau: Nhận học bổng khuyến khích học tập; Có đề tài NCKH đạt giải cấp Khoa trở lên; Có bài tham luận/nghiên cứu được đăng kỷ yếu, tạp chí; Đạt giải cuộc thi học thuật/khởi nghiệp/sáng tạo từ cấp Học viện; Là thành viên tích cực CLB học thuật.';
-                              if (name.includes('Đạo đức')) return '- Điểm rèn luyện đạt từ 80 điểm trở lên;\n- Không vi phạm pháp luật, quy chế của Nhà trường;\n- Đạt thêm ít nhất 01 trong các tiêu chí: Tham gia cuộc thi tìm hiểu Mác-Lênin; Là Đảng viên hoàn thành tốt nhiệm vụ; Tham gia thi về Đảng, Đoàn-Hội; Là thanh niên tiêu biểu/tiên tiến.';
-                              if (name.includes('Thể lực')) return 'Sinh viên đạt 01 trong các tiêu chí sau:\n- Đạt danh hiệu "Sinh viên khỏe" từ cấp Học viện trở lên.\n- Tham gia và đạt giải hoặc thi đấu chính thức tại hoạt động thể thao do Học viện, Đoàn - Hội hoặc địa phương tổ chức.\n- Là thành viên tích cực của ít nhất 01 CLB thể thao của Học viện.';
-                              if (name.includes('Tình nguyện')) return 'Sinh viên đạt 01 trong 02 tiêu chí sau:\n- Tham gia ít nhất 03 ngày tình nguyện/năm học (01 lần hiến máu = 01 ngày; 01 ngày Chủ nhật xanh/Mùa hè xanh = 01 ngày).\n- Được khen thưởng từ cấp Khoa trở lên về hoạt động tình nguyện HOẶC là người sáng lập/đồng sáng lập dự án tình nguyện thiết thực.';
-                              if (name.includes('Hội nhập')) return '- Đạt chứng chỉ tiếng Anh B1 (hoặc tương đương); hoặc điểm học phần ngoại ngữ tích lũy đạt từ 3.0/4.0 hoặc 7.5/10 trở lên.\n- Đạt thêm đồng thời ít nhất 02 tiêu chí khác nhau: Ban chủ nhiệm CLB ngoại ngữ; Tham gia hoạt động giao lưu quốc tế; Tham gia cuộc thi hội nhập/ngoại ngữ; Hoàn thành khóa trang bị kỹ năng THXH; Được khen thưởng công tác Đoàn/Hội/phong trào.';
-                              return `Cần hoàn thành tối thiểu ${reqCount} minh chứng hợp lệ.`;
-                            })()}
+                            {tc.mo_ta ? tc.mo_ta : `Cần hoàn thành tối thiểu ${reqCount} minh chứng hợp lệ.`}
                           </p>
                         </div>
                         
@@ -439,16 +429,6 @@ export default function ApplicationPage() {
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3">
-          {isStaff && (
-            <div className="bg-slate-100 p-1 rounded-xl flex">
-              {[['my', 'Hồ sơ của tôi'], ['pending', `Cần xét duyệt (${pendingApps.length})`]].map(([val, label]) => (
-                <button key={val} onClick={() => setView(val as any)}
-                  className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${view === val ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
