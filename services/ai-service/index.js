@@ -382,7 +382,7 @@ app.get('/api/ai/recommendations/:studentId', async (req, res) => {
         
         const postRes = await axios.post('https://api-vnsocialplus.vnpt.vn/social-api/v1/projects/posts', {
           project_id: projectId,
-          source: 'baochi',
+          source: 'facebook',
           start_time: Date.now() - 30 * 24 * 60 * 60 * 1000,
           end_time: Date.now(),
           from: 0,
@@ -412,8 +412,8 @@ app.get('/api/ai/recommendations/:studentId', async (req, res) => {
         {
           docId: "DD_01_" + Date.now(),
           title: "Hiến máu nhân đạo tại Viện Huyết học - Truyền máu Trung ương (Nhận giấy chứng nhận)",
-          sourceName: "Viện Huyết học",
-          postLink: "https://vienhuyethoc.vn/lich-hien-mau/",
+          sourceName: "Facebook - Viện Huyết học",
+          postLink: "https://www.facebook.com/vienhuyethoc",
           pictures: ["https://vienhuyethoc.vn/wp-content/uploads/2020/02/lich-hien-mau.jpg"],
           createDate: new Date().toISOString(),
         }
@@ -422,8 +422,8 @@ app.get('/api/ai/recommendations/:studentId', async (req, res) => {
         {
           docId: "HT_01_" + Date.now(),
           title: "Tham gia Giải thưởng Sinh viên Nghiên cứu Khoa học Euréka 2024",
-          sourceName: "Khoa Học Trẻ",
-          postLink: "https://khoahoctre.com.vn/giai-thuong-eureka/",
+          sourceName: "Facebook - Khoa Học Trẻ",
+          postLink: "https://www.facebook.com/khoahoctre",
           pictures: ["https://khoahoctre.com.vn/wp-content/uploads/2023/10/EUREKA-2023.jpg"],
           createDate: new Date().toISOString(),
         }
@@ -432,8 +432,8 @@ app.get('/api/ai/recommendations/:studentId', async (req, res) => {
         {
           docId: "TN_01_" + Date.now(),
           title: "Đăng ký các hoạt động tại Cổng thông tin Tình nguyện Quốc gia",
-          sourceName: "Mạng lưới Tình nguyện",
-          postLink: "https://tinhnguyenquocgia.com/",
+          sourceName: "Facebook - Mạng lưới Tình nguyện Quốc gia",
+          postLink: "https://www.facebook.com/tinhnguyenquocgia",
           pictures: ["https://doanthanhnien.vn/Content/images/logo-dtn.png"],
           createDate: new Date().toISOString(),
         }
@@ -442,8 +442,8 @@ app.get('/api/ai/recommendations/:studentId', async (req, res) => {
         {
           docId: "TL_01_" + Date.now(),
           title: "Thử thách chạy bộ trực tuyến UpRace (Có cấp chứng nhận hoàn thành)",
-          sourceName: "UpRace",
-          postLink: "https://uprace.org/",
+          sourceName: "Facebook - UpRace",
+          postLink: "https://www.facebook.com/uprace",
           pictures: ["https://uprace.org/wp-content/uploads/2023/07/Cover-Fanpage.jpg"],
           createDate: new Date().toISOString(),
         }
@@ -452,8 +452,8 @@ app.get('/api/ai/recommendations/:studentId', async (req, res) => {
         {
           docId: "HN_01_" + Date.now(),
           title: "Đăng ký Sáng kiến Thủ lĩnh trẻ Đông Nam Á (YSEALI)",
-          sourceName: "Đại sứ quán Hoa Kỳ",
-          postLink: "https://vn.usembassy.gov/vi/education-culture-vi/yseali-vi/",
+          sourceName: "Facebook - U.S. Embassy Hanoi",
+          postLink: "https://www.facebook.com/usembassyhanoi",
           pictures: ["https://vn.usembassy.gov/wp-content/uploads/sites/40/YSEALI-Logo.png"],
           createDate: new Date().toISOString(),
         }
