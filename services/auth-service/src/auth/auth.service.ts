@@ -53,6 +53,12 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto) {
+    // Password strength validation
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(dto.mat_khau)) {
+      throw new BadRequestException('Mật khẩu phải dài ít nhất 8 ký tự, bao gồm ít nhất 1 chữ hoa, 1 chữ số và 1 ký tự đặc biệt');
+    }
+
     // Check if user already exists
     const existingUser = await this.prisma.nguoiDung.findFirst({
       where: {

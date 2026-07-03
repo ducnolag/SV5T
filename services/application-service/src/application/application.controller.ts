@@ -19,9 +19,10 @@ export class ApplicationController {
     return this.appService.getPendingApplications(req.user);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Get('quy-ches')
-  getQuyChes() {
-    return this.appService.getQuyChes();
+  getQuyChes(@Request() req: any) {
+    return this.appService.getQuyChes(req.user);
   }
 
   @UseGuards(AuthGuard('jwt'))

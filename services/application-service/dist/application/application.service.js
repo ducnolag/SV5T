@@ -77,8 +77,31 @@ let ApplicationService = class ApplicationService {
             orderBy: { ngay_nop: 'asc' },
         });
     }
-    async getQuyChes() {
+    async getQuyChes(userPayload) {
+        const dbUser = await this.prisma.nguoiDung.findUnique({ where: { id: userPayload.id } });
+        if (!dbUser)
+            return [];
+        if (dbUser.vai_tro === shared_database_1.VaiTro.ADMIN && !dbUser.don_vi_id) {
+            return this.prisma.quyChe.findMany({
+                include: { tieu_chis: true, don_vi: true },
+                orderBy: { created_at: 'desc' },
+            });
+        }
+        const donViIds = [];
+        if (dbUser.don_vi_id) {
+            let currentDonVi = await this.prisma.donVi.findUnique({ where: { id: dbUser.don_vi_id } });
+            while (currentDonVi) {
+                donViIds.push(currentDonVi.id);
+                if (currentDonVi.parent_id) {
+                    currentDonVi = await this.prisma.donVi.findUnique({ where: { id: currentDonVi.parent_id } });
+                }
+                else {
+                    break;
+                }
+            }
+        }
         return this.prisma.quyChe.findMany({
+            where: { don_vi_id: { in: donViIds } },
             include: { tieu_chis: true, don_vi: true },
             orderBy: { created_at: 'desc' },
         });

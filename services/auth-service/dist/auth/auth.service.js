@@ -90,6 +90,10 @@ let AuthService = class AuthService {
         };
     }
     async register(dto) {
+        const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!passwordRegex.test(dto.mat_khau)) {
+            throw new common_1.BadRequestException('Mật khẩu phải dài ít nhất 8 ký tự, bao gồm ít nhất 1 chữ hoa, 1 chữ số và 1 ký tự đặc biệt');
+        }
         const existingUser = await this.prisma.nguoiDung.findFirst({
             where: {
                 OR: [{ email: dto.email }, { msv: dto.msv }, { cccd: dto.cccd }],

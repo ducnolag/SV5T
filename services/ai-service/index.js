@@ -68,15 +68,14 @@ app.post('/api/ai/chat', async (req, res) => {
 
   try {
     // Lấy quy chế mới nhất từ Database thông qua application-service
-    let activeRules = [];
-    let namHoc = '2025-2026';
+    let allQuyChes = [];
     try {
       const authHeader = req.headers.authorization;
-      console.log('AI Service received auth header:', authHeader ? 'YES' : 'NO');
       const response = await axios.get('http://localhost:3006/applications/quy-ches', {
         headers: authHeader ? { Authorization: authHeader } : {}
       });
       if (response.data && response.data.length > 0) {
+        allQuyChes = response.data;
         namHoc = response.data[0].nam_hoc;
         activeRules = response.data[0].tieu_chis;
       }
@@ -87,32 +86,49 @@ app.post('/api/ai/chat', async (req, res) => {
     let reply = "Xin lỗi, tôi chưa hiểu rõ ý bạn.";
     const lowerMsg = message.toLowerCase();
     
+    // Xử lý cấp độ Quy chế
+    let targetRules = activeRules;
+    let capDoName = "trường";
+    if (lowerMsg.includes("thành phố") || lowerMsg.includes("tỉnh")) {
+      const cityQc = allQuyChes.find(qc => qc.don_vi?.cap_do === 'TINH' || qc.don_vi?.cap_do === 'TINH_THANH');
+      if (cityQc) {
+         targetRules = cityQc.tieu_chis;
+         capDoName = "thành phố";
+      }
+    } else if (lowerMsg.includes("trung ương") || lowerMsg.includes("tw") || lowerMsg.includes("quốc gia")) {
+      const twQc = allQuyChes.find(qc => qc.don_vi?.cap_do === 'TW');
+      if (twQc) {
+         targetRules = twQc.tieu_chis;
+         capDoName = "Trung ương";
+      }
+    }
+    
     // Hàm tìm tiêu chí theo từ khóa
     const findRule = (keyword) => {
-      const rule = activeRules.find(r => r.ten_tieu_chi.toLowerCase().includes(keyword));
+      const rule = targetRules.find(r => r.ten_tieu_chi.toLowerCase().includes(keyword));
       return rule ? rule.mo_ta : null;
     };
     
     if (lowerMsg.includes("học tập") || lowerMsg.includes("điểm")) {
       const ruleDesc = findRule("học tập");
-      reply = ruleDesc ? `Theo Quy chế SV5T năm ${namHoc}, tiêu chí **Học tập tốt** yêu cầu:\n\n${ruleDesc}` : 
-      `Để đạt tiêu chí **Học tập tốt** theo Quy chế SV5T năm ${namHoc}, bạn cần đạt:\n\n- Điểm trung bình chung học tập cả năm đạt từ 3.2/4.0 trở lên.\n- Và đạt thêm ít nhất 01 trong các tiêu chí phụ.`;
+      reply = ruleDesc ? `Theo Quy chế SV5T cấp ${capDoName} năm ${namHoc}, tiêu chí **Học tập tốt** yêu cầu:\n\n${ruleDesc}` : 
+      `Để đạt tiêu chí **Học tập tốt** theo Quy chế cấp ${capDoName}, bạn cần đạt đủ điều kiện của đơn vị đề ra.`;
     } else if (lowerMsg.includes("đạo đức")) {
       const ruleDesc = findRule("đạo đức");
-      reply = ruleDesc ? `Theo Quy chế SV5T năm ${namHoc}, tiêu chí **Đạo đức tốt** yêu cầu:\n\n${ruleDesc}` :
-      `Đối với tiêu chí **Đạo đức tốt**, bạn cần:\n\n- Điểm rèn luyện đạt từ 80 điểm trở lên;\n- Không vi phạm pháp luật, quy chế Nhà trường.`;
+      reply = ruleDesc ? `Theo Quy chế SV5T cấp ${capDoName} năm ${namHoc}, tiêu chí **Đạo đức tốt** yêu cầu:\n\n${ruleDesc}` :
+      `Đối với tiêu chí **Đạo đức tốt** cấp ${capDoName}, vui lòng tham khảo chi tiết của hội sinh viên cấp đó.`;
     } else if (lowerMsg.includes("tình nguyện")) {
       const ruleDesc = findRule("tình nguyện");
-      reply = ruleDesc ? `Theo Quy chế SV5T năm ${namHoc}, tiêu chí **Tình nguyện tốt** yêu cầu:\n\n${ruleDesc}` :
-      `Tiêu chí **Tình nguyện tốt** yêu cầu bạn đạt 01 trong 02 tiêu chí sau:\n\n- Tham gia ít nhất 03 ngày tình nguyện/năm học.\n- Được khen thưởng từ cấp Khoa trở lên về hoạt động tình nguyện.`;
+      reply = ruleDesc ? `Theo Quy chế SV5T cấp ${capDoName} năm ${namHoc}, tiêu chí **Tình nguyện tốt** yêu cầu:\n\n${ruleDesc}` :
+      `Tiêu chí **Tình nguyện tốt** cấp ${capDoName} yêu cầu bạn hoàn thành hoạt động tình nguyện theo chuẩn đơn vị.`;
     } else if (lowerMsg.includes("thể lực")) {
       const ruleDesc = findRule("thể lực");
-      reply = ruleDesc ? `Theo Quy chế SV5T năm ${namHoc}, tiêu chí **Thể lực tốt** yêu cầu:\n\n${ruleDesc}` :
-      `Với **Thể lực tốt**, bạn đạt 01 trong các tiêu chí:\n\n- Đạt danh hiệu 'Sinh viên khỏe' cấp Học viện.\n- Tham gia/đạt giải hoạt động thể thao.`;
+      reply = ruleDesc ? `Theo Quy chế SV5T cấp ${capDoName} năm ${namHoc}, tiêu chí **Thể lực tốt** yêu cầu:\n\n${ruleDesc}` :
+      `Với **Thể lực tốt** cấp ${capDoName}, bạn cần đạt 'Sinh viên khỏe' hoặc tham gia giải thể thao.`;
     } else if (lowerMsg.includes("hội nhập")) {
       const ruleDesc = findRule("hội nhập");
-      reply = ruleDesc ? `Theo Quy chế SV5T năm ${namHoc}, tiêu chí **Hội nhập tốt** yêu cầu:\n\n${ruleDesc}` :
-      `Tiêu chí **Hội nhập tốt** yêu cầu:\n\n- Đạt chứng chỉ tiếng Anh B1 (hoặc điểm học phần ngoại ngữ tích lũy từ 3.0/4.0 hoặc 7.5/10 trở lên).`;
+      reply = ruleDesc ? `Theo Quy chế SV5T cấp ${capDoName} năm ${namHoc}, tiêu chí **Hội nhập tốt** yêu cầu:\n\n${ruleDesc}` :
+      `Tiêu chí **Hội nhập tốt** cấp ${capDoName} yêu cầu chứng chỉ ngoại ngữ hoặc hoạt động hội nhập.`;
     } else if (lowerMsg.includes("thời gian") || lowerMsg.includes("hạn")) {
       reply = `Hiện tại là thời gian thu thập minh chứng cho năm học ${namHoc}. Bạn hãy tranh thủ cập nhật các minh chứng nhé!`;
     } else if (lowerMsg.includes("đầy đủ") || lowerMsg.includes("quy chế") || lowerMsg.includes("chi tiết")) {
@@ -151,21 +167,50 @@ app.post('/api/ai/extract-criteria', (req, res) => {
   if (!text) return res.json({ count: 1 });
   
   let count = 0;
-  const lines = text.split('\n');
+  // Replace inline bullets like "; -" or ". -" with newline to split them properly
+  const normalizedText = text.replace(/;\s*-/g, '\n-').replace(/\.\s*-/g, '\n-');
+  const lines = normalizedText.split('\n');
+  let inOptionsBlock = false;
+
   for (const line of lines) {
     const lowerLine = line.toLowerCase().trim();
-    // Only count mandatory rules that start with '-'
-    if (lowerLine.startsWith('-')) {
-      if (lowerLine.includes('không vi phạm')) {
-        continue; // Bỏ qua tiêu chí không vi phạm vì không cần nộp minh chứng
+    
+    // Ignore empty lines
+    if (!lowerLine) continue;
+
+    // Check if this line introduces a choice block (e.g. "Đạt 1 trong các tiêu chí sau:")
+    const matchChoice = lowerLine.match(/(ít nhất|chọn|đạt|đạt thêm|từ)\s*0?(\d+)\s*(trong|tiêu chí)/);
+    if (matchChoice) {
+      count += parseInt(matchChoice[2], 10);
+      inOptionsBlock = true; // All following bullets belong to this choice block
+      continue;
+    }
+    
+    if (lowerLine.includes('trong các tiêu chí sau') || lowerLine.includes('một trong các')) {
+      if (!matchChoice) count += 1;
+      inOptionsBlock = true;
+      continue;
+    }
+
+    // Process bullet points starting with '-' or '+'
+    if (lowerLine.startsWith('-') || lowerLine.startsWith('+') || lowerLine.startsWith('*')) {
+      if (inOptionsBlock) {
+        // Skip items inside a choice block because we already counted the choice requirement (e.g. 1)
+        continue;
       }
       
-      const match = lowerLine.match(/(ít nhất|chọn)\s+0?(\d+)/);
-      if (match) {
-        count += parseInt(match[2], 10);
-      } else if (!lowerLine.includes('trong các tiêu chí sau')) {
-        count += 1;
+      if (lowerLine.includes('không vi phạm')) continue;
+      
+      // Analyze the sentence structure: a valid independent requirement usually contains verbs or key terms
+      const actionKeywords = ['đạt', 'tham gia', 'được', 'là', 'có', 'điểm', 'chứng chỉ', 'hoàn thành', 'khen thưởng', 'nhận'];
+      const hasAction = actionKeywords.some(kw => lowerLine.includes(kw));
+      
+      // If it's just a noun phrase like "- Đoàn Thanh niên - Hội Sinh viên" (short and no verb), it's a sub-item, skip it
+      if (!hasAction && lowerLine.length < 60) {
+        continue; 
       }
+      
+      count += 1;
     }
   }
   

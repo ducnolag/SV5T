@@ -28,8 +28,8 @@ let ApplicationController = class ApplicationController {
     getPendingApplications(req) {
         return this.appService.getPendingApplications(req.user);
     }
-    getQuyChes() {
-        return this.appService.getQuyChes();
+    getQuyChes(req) {
+        return this.appService.getQuyChes(req.user);
     }
     saveQuyChe(dto, req) {
         return this.appService.saveQuyChe(dto, req.user);
@@ -68,9 +68,11 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ApplicationController.prototype, "getPendingApplications", null);
 __decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
     (0, common_1.Get)('quy-ches'),
+    __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], ApplicationController.prototype, "getQuyChes", null);
 __decorate([

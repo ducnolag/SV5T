@@ -88,6 +88,15 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    // Password strength validation
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(formData.mat_khau)) {
+      setError('Mật khẩu phải dài ít nhất 8 ký tự, bao gồm ít nhất 1 chữ hoa, 1 chữ số và 1 ký tự đặc biệt.');
+      setLoading(false);
+      return;
+    }
+
     try {
       await api.post('/auth/register', formData);
       const loginRes = await api.post('/auth/login', { email: formData.email, mat_khau: formData.mat_khau });

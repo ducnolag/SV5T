@@ -97,7 +97,7 @@ export declare class ApplicationController {
         ngay_nop: Date | null;
         created_at: Date;
     })[]>;
-    getQuyChes(): Promise<({
+    getQuyChes(req: any): Promise<({
         don_vi: {
             id: string;
             trang_thai: boolean;
