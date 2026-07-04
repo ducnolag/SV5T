@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Bot, User, Loader2 } from 'lucide-react';
+import { X, Send, Bot, User, Loader2, RotateCcw } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -14,13 +14,23 @@ const QUICK_QUESTIONS = [
   'Quy trình duyệt hồ sơ như thế nào?',
 ];
 
+// Bộ nhớ đệm hội thoại trong RAM (giữ nguyên khi đóng/mở Widget, tự động xóa mới khi F5 tải lại trang)
+let cachedMessages: Message[] | null = null;
+let currentSessionId: string = Math.random().toString(36).substring(2, 10);
+
 export default function ChatbotWidget({ onClose }: { onClose: () => void }) {
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Xin chào! Tôi là trợ lý AI của hệ thống SV5T. Tôi có thể giúp bạn tìm hiểu quy chế xét danh hiệu Sinh viên 5 Tốt. Bạn muốn hỏi gì?' }
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    return cachedMessages || [
+      { role: 'assistant', content: 'Xin chào! Tôi là trợ lý AI của hệ thống SV5T. Tôi có thể giúp bạn tìm hiểu quy chế xét danh hiệu Sinh viên 5 Tốt. Bạn muốn hỏi gì?' }
+    ];
+  });
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    cachedMessages = messages;
+  }, [messages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -46,7 +56,7 @@ export default function ChatbotWidget({ onClose }: { onClose: () => void }) {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ message: text })
+        body: JSON.stringify({ message: text, userId: currentSessionId, sessionId: currentSessionId })
       });
 
       if (!response.body) throw new Error("No response body");
@@ -124,9 +134,24 @@ export default function ChatbotWidget({ onClose }: { onClose: () => void }) {
             <p className="text-blue-200 text-xs">VNPT SmartBot · RAG</p>
           </div>
         </div>
-        <button onClick={onClose} className="text-white/70 hover:text-white">
-          <X size={18} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              cachedMessages = null;
+              currentSessionId = Math.random().toString(36).substring(2, 10);
+              setMessages([
+                { role: 'assistant', content: 'Xin chào! Tôi là trợ lý AI của hệ thống SV5T. Tôi có thể giúp bạn tìm hiểu quy chế xét danh hiệu Sinh viên 5 Tốt. Bạn muốn hỏi gì?' }
+              ]);
+            }}
+            title="Làm mới cuộc trò chuyện"
+            className="text-white/70 hover:text-white transition-colors p-1"
+          >
+            <RotateCcw size={16} />
+          </button>
+          <button onClick={onClose} className="text-white/70 hover:text-white transition-colors p-1">
+            <X size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Messages */}

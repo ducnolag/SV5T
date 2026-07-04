@@ -60,6 +60,325 @@ Dưới đây là Quy định về tiêu chuẩn xét chọn danh hiệu Sinh vi
 
 Hãy trả lời ngắn gọn, lịch sự, thân thiện và chính xác dựa trên quy định trên.`;
 
+// Lưu lịch sử tạm theo userId (production nên dùng Redis thay vì biến trong RAM)
+const conversationStore = new Map();
+const MAX_HISTORY_TURNS = 6; // giữ 6 lượt gần nhất để tránh tốn token
+
+function getHistory(userId) {
+  return conversationStore.get(userId) || [];
+}
+function pushHistory(userId, userMsg, botMsg) {
+  const h = getHistory(userId);
+  h.push({ role: 'user', content: userMsg });
+  h.push({ role: 'assistant', content: botMsg });
+  while (h.length > MAX_HISTORY_TURNS * 2) h.shift();
+  conversationStore.set(userId, h);
+}
+
+// Hàm gọi LLM thực tế theo mô hình Fallback Chain (Groq -> Gemini -> OpenAI)
+async function callExternalLLM(message, systemPrompt, history = []) {
+  const providers = [];
+
+  if (process.env.GROQ_API_KEY) providers.push(() => callGroq(message, systemPrompt, history));
+  if (process.env.GEMINI_API_KEY) providers.push(() => callGemini(message, systemPrompt, history));
+  if (process.env.OPENAI_API_KEY) providers.push(() => callOpenAI(message, systemPrompt, history));
+
+  for (const call of providers) {
+    try {
+      const reply = await call();
+      if (reply && reply.trim().length > 0) return reply;
+    } catch (e) {
+      console.error('LLM provider failed, trying next:', e.message);
+    }
+  }
+  return null;
+}
+
+async function callGroq(message, systemPrompt, history = []) {
+  const apiKey = process.env.GROQ_API_KEY;
+  const res = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+    model: 'llama-3.3-70b-versatile', // model 70B mạnh hơn nhiều so với llama3-8b-8192
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...history,
+      { role: 'user', content: message }
+    ],
+    temperature: 0.6,
+    max_tokens: 1024
+  }, { headers: { Authorization: `Bearer ${apiKey}` }, timeout: 15000 });
+  return res.data.choices?.[0]?.message?.content;
+}
+
+async function callOpenAI(message, systemPrompt, history = []) {
+  const res = await axios.post('https://api.openai.com/v1/chat/completions', {
+    model: 'gpt-4o-mini', // rẻ hơn và chất lượng cao hơn hẳn 3.5-turbo
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...history,
+      { role: 'user', content: message }
+    ],
+    temperature: 0.6
+  }, { headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, timeout: 15000 });
+  return res.data.choices?.[0]?.message?.content;
+}
+
+async function callGemini(message, systemPrompt, history = []) {
+  const contents = [
+    ...history.map(h => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.content }] })),
+    { role: 'user', parts: [{ text: message }] }
+  ];
+  const apiKey = process.env.GEMINI_API_KEY;
+  const modelsToTry = ['gemma-4-26b-a4b-it', 'gemma-4-31b-it', 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash-lite', 'gemini-2.0-flash'];
+  for (const model of modelsToTry) {
+    try {
+      const res = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        { systemInstruction: { parts: [{ text: systemPrompt }] }, contents },
+        { timeout: 15000 }
+      );
+      const text = res.data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) return text;
+    } catch (e) {
+      console.error(`Gemini model ${model} failed:`, e.response?.data?.error?.message || e.message);
+    }
+  }
+  return null;
+}
+
+// Bộ máy giả lập suy luận thông minh như LLM (khi không cài API key hoặc API lỗi)
+function generateIntelligentFallback(message, targetRules, capDoName, namHoc, allQuyChes) {
+  const lower = message.toLowerCase().trim();
+  const rulesMap = targetRules.map(r => `**🔹 ${r.ten_tieu_chi}**\n*Yêu cầu:* ${r.mo_ta || 'Đang cập nhật...'}`).join('\n\n');
+
+  // 1. Chào hỏi tự nhiên, giao tiếp thân thiện (chỉ khi câu ngắn gọn hoặc rõ ý chào hỏi)
+  if (/^(xin chào|chào bot|chào bạn|chào|hi\b|hello|hey\b|alo|ê\b|good morning|good afternoon)/i.test(lower) && lower.split(/\s+/).length <= 6) {
+    return `👋 **Xin chào bạn! Tôi là Trợ lý AI tư vấn Sinh viên 5 tốt (Năm học ${namHoc}).**\n\n` +
+           `Tôi luôn sẵn sàng trò chuyện, giải đáp thắc mắc và đồng hành cùng bạn trên con đường rèn luyện toàn diện! 🤖✨\n\n` +
+           `💡 **Bạn có thể trò chuyện với tôi về:**\n` +
+           `- 💬 *Tư vấn định hướng:* "Bạn có thể giúp gì cho tôi?", "Làm thế nào để xây dựng kỹ năng mềm?"\n` +
+           `- 📊 *Đánh giá hồ sơ cá nhân:* "GPA 3.2 và ĐRL 85 có đủ điều kiện xét danh hiệu không?"\n` +
+           `- 🚀 *Lộ trình rèn luyện:* "Cách bắt đầu chinh phục SV5T từ con số 0"\n` +
+           `- 📋 *Quy chế & Minh chứng:* "Xem yêu cầu tiêu chí Tình nguyện tốt", "Cách nộp minh chứng lấy ngay"\n\n` +
+           `👉 *Hôm nay bạn muốn chúng ta trao đổi về chủ đề nào, hãy nhắn cho tôi nhé!*`;
+  }
+
+  // 2. Hỏi về danh tính / Khả năng của Bot / Câu hỏi chung "giúp gì ngoài quy chế"
+  if (lower.includes("bạn là ai") || lower.includes("giúp gì") || lower.includes("làm được gì") || lower.includes("tính năng") || lower.includes("ngoài chuyện quy chế") || lower.includes("có thể làm gì") || lower.includes("chức năng")) {
+    return `🤖 **Tôi là Trợ lý AI Toàn năng của Hệ thống Sinh viên 5 tốt (${namHoc})!**\n\n` +
+           `Không chỉ là một công cụ tra cứu quy chế, tôi được thiết kế với tư duy hỗ trợ toàn diện cho sinh viên như một LLM thực thụ:\n\n` +
+           `🎯 **1. Đánh giá & Phân tích Hồ sơ Cá nhân (Định lượng):**\n` +
+           `Bạn chỉ cần đưa ra các con số (ví dụ: *GPA 3.2, ĐRL 85, có chứng chỉ IELTS 6.5*), tôi sẽ tính toán chính xác mức độ đạt chuẩn và chỉ ra bạn cần bổ sung điều kiện gì cho từng cấp (Trường, Tỉnh, TW).\n\n` +
+           `🗺️ **2. Tư vấn Lộ trình & Chiến lược Rèn luyện:**\n` +
+           `Chia sẻ với bạn phương pháp học tập tốt, cách tham gia nghiên cứu khoa học, rèn luyện thể lực hay tìm kiếm chiến dịch tình nguyện phù hợp với ngành học.\n\n` +
+           `🔍 **3. Kết nối Hoạt động & Kiểm tra Minh chứng:**\n` +
+           `Đồng hành cùng bạn tự động quét các bài đăng hoạt động mới nhất từ Facebook trường/hội, hướng dẫn cách upload giấy chứng nhận để AI OCR tự động kiểm tra không bị lỗi.\n\n` +
+           `💡 **4. Lắng nghe & Trò chuyện đời sống sinh viên:**\n` +
+           `Sẵn sàng chia sẻ lời khuyên về vượt qua áp lực thi cử, định hướng nghề nghiệp và kỹ năng hội nhập toàn cầu.\n\n` +
+           `👉 *Bạn muốn thử trải nghiệm tính năng nào ngay bây giờ?*`;
+  }
+
+  // 3. XÁC MINH HOẠT ĐỘNG / ĐỐI CHIẾU TIÊU CHÍ (Tính năng thông minh AI)
+  const isQuestion = /(?:đạt|được|tính|có|tiêu chí|thuộc|vào|đáp ứng|bao nhiêu|đủ|làm sao|ở đâu|điểm|quyết định|chứng nhận|hợp lệ|khớp|là sao|à|không|ổn|thì sao|như thế nào)/i.test(lower);
+
+  // 3.1. Hỏi về Thể lực (chạy bộ, thể thao, bơi, giải đấu, sinh viên khỏe...)
+  if (/(?:chạy|thể thao|bóng đá|cầu lông|bơi|sinh viên khỏe|thể dục|giải chạy|marathon|đi bộ|trekking|thể lực|khỏe)/i.test(lower) && isQuestion) {
+    const r = targetRules.find(r => r.ten_tieu_chi.toLowerCase().includes("thể lực"));
+    return `🏃 **Tư vấn về Hoạt động Thể lực & Thể thao (Cấp ${capDoName} - ${namHoc}):**\n\n` +
+           `✅ **Câu trả lời là CÓ!** Việc tham gia các giải chạy bộ (online/offline), giải đấu thể thao (bóng đá, cầu lông, cờ vua...) hoặc đạt danh hiệu **"Sinh viên khỏe"** chính là minh chứng chuẩn xác nhất để hoàn thành tiêu chí **Thể lực tốt**.\n\n` +
+           `📜 **Quy định cụ thể của tiêu chí Thể lực tốt tại đơn vị của bạn:**\n` +
+           `*${r ? r.mo_ta : 'Đạt danh hiệu "Sinh viên khỏe" hoặc tham gia ít nhất 1 hoạt động thể thao cấp Trường/Khoa trở lên.'}*\n\n` +
+           `💡 **Cách nộp minh chứng để được duyệt 100%:**\n` +
+           `- Chụp ảnh **Giấy chứng nhận / Huy chương / Screenshot xác nhận hoàn thành cự ly** (kèm họ tên và tên giải đấu).\n` +
+           `- Vào mục **Minh chứng** -> Chọn tiêu chí **Thể lực tốt** -> Tải ảnh lên. AI OCR sẽ tự động quét và xác nhận đạt cho bạn ngay lập tức! 🚀`;
+  }
+
+  // 3.2. Hỏi về Tình nguyện (hiến máu, mùa hè xanh, tiếp sức mùa thi, công tác xã hội...)
+  if (/(?:hiến máu|mùa hè xanh|tiếp sức mùa thi|tình nguyện|công tác xã hội|từ thiện|giúp đỡ|quét dọn|quỹ|ngày thứ 7|xanh)/i.test(lower) && isQuestion) {
+    const r = targetRules.find(r => r.ten_tieu_chi.toLowerCase().includes("tình nguyện"));
+    return `🤝 **Tư vấn về Hoạt động Tình nguyện & Cống hiến (Cấp ${capDoName} - ${namHoc}):**\n\n` +
+           `✅ **Hoàn toàn chính xác!** Các hoạt động như Hiến máu nhân đạo, Mùa hè xanh, Tiếp sức mùa thi, hoặc chiến dịch tình nguyện do Đoàn/Hội tổ chức là minh chứng tiêu biểu cho tiêu chí **Tình nguyện tốt**.\n\n` +
+           `📜 **Quy định của tiêu chí Tình nguyện tốt:**\n` +
+           `*${r ? r.mo_ta : 'Tham gia ít nhất 02 hoạt động tình nguyện hoặc được biểu dương, khen thưởng trong công tác xã hội.'}*\n\n` +
+           `💡 **Lưu ý quan trọng khi tải minh chứng:**\n` +
+           `- Giấy chứng nhận hiến máu hoặc Giấy khen/Xác nhận tham gia chiến dịch tình nguyện cần có **dấu đỏ hoặc chữ ký điện tử hợp lệ** của đơn vị tổ chức.\n` +
+           `- Nếu bạn tham gia qua trang **Đề xuất hoạt động**, hệ thống đã tự động liên kết dữ liệu chứng nhận cho bạn!`;
+  }
+
+  // 3.3. Hỏi về Học tập & NCKH (bài báo, nckh, olympic, học thuật...)
+  if (/(?:nckh|nghiên cứu|bài báo|olympic|học thuật|cuộc thi|chuyên ngành|hội thảo|sáng tạo|đề tài)/i.test(lower) && isQuestion) {
+    const r = targetRules.find(r => r.ten_tieu_chi.toLowerCase().includes("học"));
+    return `📚 **Tư vấn về Hoạt động Học tập & Nghiên cứu khoa học (Cấp ${capDoName} - ${namHoc}):**\n\n` +
+           `✅ **Rất xuất sắc!** Viết bài báo khoa học, tham gia đề tài NCKH, thi Olympic các môn học hay đạt giải cuộc thi học thuật là những minh chứng "điểm nhấn" để chinh phục tiêu chí **Học tập tốt** (đặc biệt bắt buộc đối với cấp Tỉnh và Trung ương).\n\n` +
+           `📜 **Yêu cầu quy chuẩn cho tiêu chí Học tập tốt:**\n` +
+           `*${r ? r.mo_ta : 'Đạt GPA chuẩn theo quy định và có tham gia hoạt động nghiên cứu khoa học hoặc thi học thuật.'}*\n\n` +
+           `💡 **Cách phân loại minh chứng:**\n` +
+           `- *Bảng điểm GPA:* Tải lên học bạ/bảng điểm có xác nhận phòng đào tạo.\n` +
+           `- *Giấy khen NCKH/Olympic:* Tải riêng vào mục minh chứng bổ trợ cho tiêu chí Học tập tốt.`;
+  }
+
+  // 3.4. Hỏi về Hội nhập & Ngoại ngữ (ielts, toeic, hsk, giao lưu quốc tế...)
+  if (/(?:ielts|toeic|toefl|hsk|b1|b2|c1|ngoại ngữ|tiếng anh|tiếng trung|tiếng nhật|tiếng hàn|giao lưu|quốc tế|hội nhập|kỹ năng mềm|workshop|hùng biện)/i.test(lower) && isQuestion) {
+    const r = targetRules.find(r => r.ten_tieu_chi.toLowerCase().includes("hội nhập"));
+    return `🌍 **Tư vấn về Ngoại ngữ & Kỹ năng Hội nhập (Cấp ${capDoName} - ${namHoc}):**\n\n` +
+           `✅ **Chính xác!** Các chứng chỉ ngoại ngữ (IELTS, TOEIC, B1, HSK...) hoặc tham gia các chương trình giao lưu sinh viên quốc tế, hội thảo tiếng Anh là điều kiện tiên quyết để đạt tiêu chí **Hội nhập tốt**.\n\n` +
+           `📜 **Quy chuẩn của tiêu chí Hội nhập tốt tại đơn vị:**\n` +
+           `*${r ? r.mo_ta : 'Đạt chuẩn trình độ ngoại ngữ B1/TOEIC/IELTS hoặc tham gia các hoạt động hội nhập, kỹ năng toàn cầu.'}*\n\n` +
+           `💡 **Mẹo nhỏ cho sinh viên:**\n` +
+           `- Nếu chưa có chứng chỉ quốc tế, bạn hoàn toàn có thể tham gia các **cuộc thi Hùng biện tiếng Anh, Câu lạc bộ Ngoại ngữ** hoặc các khóa đào tạo kỹ năng mềm của trường để thay thế (tùy theo cấp độ xét duyệt)!`;
+  }
+
+  // 3.5. Hỏi về Đạo đức & Rèn luyện (đoàn, hội, cán bộ lớp, khen thưởng...)
+  if (/(?:đoàn|hội|lớp trưởng|bí thư|khen thưởng|chấp hành|kỷ luật|đạo đức|nội quy|cán bộ)/i.test(lower) && isQuestion) {
+    const r = targetRules.find(r => r.ten_tieu_chi.toLowerCase().includes("đạo đức"));
+    return `💖 **Tư vấn về Điểm rèn luyện & Tiêu chí Đạo đức tốt (Cấp ${capDoName} - ${namHoc}):**\n\n` +
+           `✅ **Đúng vậy!** Điểm rèn luyện (thường từ 80 điểm trở lên), thành tích làm cán bộ Đoàn/Hội (Lớp trưởng, Bí thư, BCH) hoặc các giấy khen biểu dương gương người tốt việc tốt là cốt lõi của tiêu chí **Đạo đức tốt**.\n\n` +
+           `📜 **Quy định tiêu chí Đạo đức tốt:**\n` +
+           `*${r ? r.mo_ta : 'Điểm rèn luyện từ 80 trở lên, không vi phạm quy chế pháp luật và tích cực trong công tác Đoàn/Hội.'}*\n\n` +
+           `💡 **Cách chứng minh:** Tải lên bảng kết quả điểm rèn luyện của học kỳ/năm học từ cổng thông tin sinh viên hoặc quyết định khen thưởng cán bộ lớp xuất sắc.`;
+  }
+
+  // 3.6. Hỏi cách xác định hoạt động/minh chứng bất kỳ đáp ứng tiêu chí nào ("hoạt động này đáp ứng tiêu chí không?")
+  if (/(?:hoạt động này|minh chứng này|bài đăng này|cuộc thi này|chương trình này|cái này)/i.test(lower) || (lower.includes("đáp ứng tiêu chí") || lower.includes("thuộc tiêu chí") || lower.includes("tính vào tiêu chí") || lower.includes("nộp vào tiêu chí") || lower.includes("xếp vào đâu") || lower.includes("tính vào đâu") || lower.includes("được tính tiêu chí nào") || lower.includes("được tính vào tiêu chí nào"))) {
+    return `🎯 **Cách xác định Hoạt động / Minh chứng đáp ứng Tiêu chí nào:**\n\n` +
+           `Để biết chính xác một hoạt động hoặc tờ Giấy chứng nhận của bạn thuộc tiêu chí nào trong 5 tiêu chí, hãy đối chiếu theo nguyên tắc chuẩn sau của hệ thống:\n\n` +
+           `1️⃣ **📚 Học tập tốt:**\n` +
+           `   - *Áp dụng cho:* Giấy khen học bổng, Chứng nhận tham gia/đạt giải Nghiên cứu khoa học (NCKH), thi Olympic, cuộc thi học thuật, chuyên môn nghề nghiệp.\n` +
+           `2️⃣ **💖 Đạo đức tốt:**\n` +
+           `   - *Áp dụng cho:* Phiếu điểm rèn luyện ($\\ge 80$ điểm), Giấy khen Cán bộ Đoàn/Hội xuất sắc, Gương thanh niên tiêu biểu.\n` +
+           `3️⃣ **🏃 Thể lực tốt:**\n` +
+           `   - *Áp dụng cho:* Giấy chứng nhận "Sinh viên khỏe", Huy chương/chứng nhận giải chạy bộ, giải bóng đá, bóng chuyền, cầu lông, hội thao sinh viên.\n` +
+           `4️⃣ **🤝 Tình nguyện tốt:**\n` +
+           `   - *Áp dụng cho:* Giấy chứng nhận Hiến máu nhân đạo, Tiếp sức mùa thi, Mùa hè xanh, chiến dịch Xuân tình nguyện, các hoạt động từ thiện cộng đồng.\n` +
+           `5️⃣ **🌍 Hội nhập tốt:**\n` +
+           `   - *Áp dụng cho:* Chứng chỉ ngoại ngữ (IELTS/TOEIC/B1...), Giấy chứng nhận tham gia hội thảo quốc tế, cuộc thi tiếng Anh, workshop kỹ năng mềm, giao lưu văn hóa.\n\n` +
+           `🤖 **🔥 TÍNH NĂNG AI SIÊU VIỆT:** Khi bạn vào trang **Hồ sơ -> Nộp minh chứng** và tải ảnh lên, **AI OCR Anti-Fraud** của chúng tôi sẽ tự động đọc nội dung văn bản trên ảnh và **TỰ ĐỘNG GỢI Ý / XẾP ĐÚNG TIÊU CHÍ** cho bạn mà bạn không cần phải tự suy đoán! Hãy tải ảnh lên thử ngay nhé! 🚀`;
+  }
+
+  // 3.7. Hỏi chung về tính hợp lệ của hoạt động / được tính không
+  if (lower.includes("được tính không") || lower.includes("có được tính") || lower.includes("đáp ứng không") || lower.includes("được cộng điểm") || lower.includes("có hợp lệ") || lower.includes("có được không") || lower.includes("được tính không ạ") || lower.includes("có tính không")) {
+    return `💡 **Tư vấn AI về Tính hợp lệ của Hoạt động / Minh chứng:**\n\n` +
+           `Đối với hoạt động hoặc minh chứng bạn đang quan tâm (**"${message}"**), hệ thống sẽ đánh giá tính hợp lệ dựa trên 3 tiêu chuẩn cốt lõi:\n\n` +
+           `1️⃣ **Đúng chuyên đề tiêu chí:** Hoạt động cần thể hiện rõ nội dung liên quan đến 1 trong 5 mặt: *Học tập (chuyên môn/NCKH), Đạo đức (rèn luyện/chấp hành), Thể lực (thể thao/chạy bộ), Tình nguyện (cống hiến cộng đồng), hoặc Hội nhập (ngoại ngữ/kỹ năng)*.\n` +
+           `2️⃣ **Đơn vị tổ chức cấp Giấy chứng nhận:** Giấy chứng nhận, giấy khen hoặc email xác nhận phải do các đơn vị uy tín (Đoàn Thanh niên, Hội Sinh viên, Khoa/Trường, hoặc các câu lạc bộ chính thức) cấp.\n` +
+           `3️⃣ **Thời gian hợp lệ:** Hoạt động phải diễn ra trong năm học xét tuyển (Năm học ${namHoc}).\n\n` +
+           `👉 **Cách nhanh nhất để kiểm tra:** Bạn hãy tải ảnh chụp chứng nhận đó vào mục **Nộp minh chứng**, AI của hệ thống sẽ tự động quét OCR và phản hồi ngay lập tức xem hoạt động đó đạt bao nhiêu % độ tin cậy và thuộc tiêu chí nào nhé! 🚀`;
+  }
+
+  // 4. Phân tích điểm số / Đánh giá hồ sơ cá nhân (GPA, ĐRL, IELTS...)
+  const gpaMatch = lower.match(/(?:gpa|điểm trung bình|tbht|điểm học tập|đht|điểm)\s*[:=]?\s*([0-3]+[\.,]?[0-9]*|4[\.,]?0*|8[\.,][0-9]+|9[\.,][0-9]+|10)/i);
+  const drlMatch = lower.match(/(?:drl|đrl|điểm rèn luyện|rèn luyện)\s*[:=]?\s*([0-9]{2,3})/i) || lower.match(/\b(8[0-9]|9[0-9]|100)\b/);
+  if ((gpaMatch || drlMatch || lower.includes("có đạt không") || lower.includes("đủ điều kiện không") || lower.includes("đánh giá hồ sơ") || lower.includes("bảng điểm") || lower.includes("ielts") || lower.includes("toeic")) && !lower.includes("là gì")) {
+    let advice = `📊 **Phân tích chuyên sâu hồ sơ cá nhân của bạn cho danh hiệu SV5T cấp ${capDoName} (${namHoc}):**\n\n`;
+    if (gpaMatch) {
+      const val = parseFloat(gpaMatch[1].replace(',', '.'));
+      if (val >= 3.2 || val >= 8.0) {
+        advice += `✅ **Điểm học tập (${val}):** RẤT XUẤT SẮC! Bạn đã vượt nền chuẩn tối thiểu của tiêu chí Học tập tốt. Để tự tin đạt cấp cao (Tỉnh/TW), bạn nên chuẩn bị thêm đề tài NCKH hoặc giải thưởng chuyên ngành nhé!\n`;
+      } else if (val >= 2.8) {
+        advice += `🟡 **Điểm học tập (${val}):** Ở mức Khá - Tốt! Đáp ứng điều kiện xét tại nhiều Khoa/Trường, bạn có thể bù đắp bằng các thành tích nghiên cứu khoa học tích cực.\n`;
+      } else {
+        advice += `⚠️ **Điểm học tập (${val}):** Hiện tại cần nỗ lực thêm ở học kỳ tới để đạt chuẩn căn bản nhé. Hãy kiên trì!\n`;
+      }
+    }
+    if (drlMatch) {
+      const drl = parseInt(drlMatch[1]);
+      if (drl >= 80) {
+        advice += `✅ **Điểm rèn luyện (${drl}):** ĐẠT CHUẨN! Tiêu chí Đạo đức tốt yêu cầu điểm rèn luyện từ 80 điểm trở lên cùng lối sống gương mẫu.\n`;
+      } else {
+        advice += `⚠️ **Điểm rèn luyện (${drl}):** Cần tối thiểu 80 điểm. Bạn nhớ tích cực tham gia đầy đủ các buổi sinh hoạt Đoàn/Hội và câu lạc bộ nhé!\n`;
+      }
+    }
+    if (lower.includes("ielts") || lower.includes("toeic") || lower.includes("b1") || lower.includes("b2") || lower.includes("ngoại ngữ")) {
+      advice += `🌐 **Ngoại ngữ & Hội nhập:** Chứng chỉ ngoại ngữ (IELTS/TOEIC/B1...) là lợi thế tuyệt đối giúp bạn hoàn thành xuất sắc tiêu chí **Hội nhập tốt**!\n`;
+    }
+    advice += `\n💡 *Gợi ý từ AI:* Hãy nộp ngay các minh chứng bạn đang có vào mục **Minh chứng** để hệ thống AI OCR tự động kiểm duyệt và chấm tiến độ % cho bạn nhé!`;
+    return advice;
+  }
+
+  // 5. Hỏi lộ trình / Cách bắt đầu / Hướng dẫn chung
+  if ((lower.includes("làm sao") || lower.includes("làm thế nào") || lower.includes("bắt đầu") || lower.includes("quy trình") || lower.includes("hướng dẫn") || lower.includes("cách đạt") || lower.includes("cần những gì") || lower.includes("lộ trình")) && (lower.includes("đạt") || lower.includes("sv5t") || lower.includes("sinh viên 5 tốt") || lower.includes("danh hiệu") || lower.includes("bắt đầu") || lower.includes("quy trình") || lower.includes("cần những gì") || lower.includes("lộ trình"))) {
+    return `🚀 **Lộ trình 4 bước chinh phục danh hiệu Sinh viên 5 tốt cấp ${capDoName} (${namHoc}):**\n\n` +
+           `1️⃣ **Hiểu rõ 5 tiêu chí cốt lõi:**\n` +
+           `   - 📚 *Học tập tốt:* GPA đạt chuẩn + NCKH/Olympic.\n` +
+           `   - 💖 *Đạo đức tốt:* Điểm rèn luyện ≥ 80, không vi phạm quy chế.\n` +
+           `   - 🏃 *Thể lực tốt:* Đạt "Sinh viên khỏe" hoặc tham gia giải thể thao.\n` +
+           `   - 🤝 *Tình nguyện tốt:* Tham gia Mùa hè xanh, Hiến máu, Tiếp sức mùa thi...\n` +
+           `   - 🌍 *Hội nhập tốt:* Ngoại ngữ (IELTS/TOEIC/B1...) hoặc giao lưu quốc tế.\n\n` +
+           `2️⃣ **Sử dụng bảng Đề xuất hoạt động (AI):** Hệ thống đã tự động cào và tổng hợp các cuộc thi có cấp Giấy chứng nhận mới nhất từ các trường và group. Bạn thiếu tiêu chí nào, hãy tham gia ngay bài đăng đó!\n\n` +
+           `3️⃣ **Nộp minh chứng ngay khi có:** Chụp ảnh/PDF giấy chứng nhận và tải lên trang Hồ sơ. AI OCR sẽ tự động đọc tên và xác minh giúp bạn.\n\n` +
+           `4️⃣ **Hoàn thiện và gửi duyệt:** Kiểm tra tiến độ đạt 100% cho cả 5 tiêu chí trước ngày đóng cổng nhé!`;
+  }
+
+  // 6. Hỏi về minh chứng / Cách tìm hoạt động / Lỗi nộp file
+  if (lower.includes("minh chứng") || lower.includes("giấy chứng nhận") || lower.includes("chưa có") || lower.includes("lấy ở đâu") || lower.includes("nộp ở đâu") || lower.includes("tìm hoạt động") || lower.includes("upload") || lower.includes("tải file")) {
+    return `📑 **Hướng dẫn về Minh chứng & Cách tích lũy Giấy chứng nhận:**\n\n` +
+           `🔍 **Nếu bạn chưa có minh chứng / thiếu tiêu chí:**\n` +
+           `- Hãy kéo lên phần **"Đề xuất Hoạt động (AI)"** ngay trên trang chủ! Hệ thống liên tục tự động thu thập các cuộc thi, chiến dịch tình nguyện, giải thể thao... từ Facebook chính thức của trường/hội.\n` +
+           `- Bấm vào link hoạt động → Tham gia và hoàn thành theo hướng dẫn để nhận Giấy chứng nhận.\n\n` +
+           `📤 **Cách nộp minh chứng trên hệ thống:**\n` +
+           `1. Vào trang **Hồ sơ của tôi** hoặc tab **Minh chứng**.\n` +
+           `2. Bấm nút **"Tải minh chứng lên"** (hỗ trợ ảnh JPG/PNG hoặc PDF).\n` +
+           `3. AI sẽ tự động kiểm tra tính hợp lệ (tên, đơn vị cấp, thời hạn) và tự xếp vào tiêu chí phù hợp!\n\n` +
+           `*Lưu ý: Ngay khi bạn upload minh chứng thành công, hoạt động gợi ý tương ứng sẽ tự động ẩn đi!*`;
+  }
+
+  // 7. Hỏi thời gian / Deadline
+  if (lower.includes("thời gian") || lower.includes("hạn nộp") || lower.includes("khi nào hết hạn") || lower.includes("đóng cổng") || lower.includes("deadline")) {
+    return `⏰ **Thời gian và Hạn nộp hồ sơ SV5T (${namHoc}):**\n\n` +
+           `- Hiện tại cổng nộp hồ sơ đang mở để sinh viên cập nhật minh chứng.\n` +
+           `- **Hạn chót nộp hồ sơ:** Theo lịch phân luồng của từng đơn vị (thường đóng vào cuối học kỳ/cuối năm xét chọn).\n` +
+           `- 💡 *Lời khuyên:* Đừng để đến ngày cuối cùng mới tải file! Hãy chụp và upload minh chứng lên hệ thống ngay mỗi khi bạn vừa tham gia xong một hoạt động nhé.`;
+  }
+
+  // 8. Hỏi phân cấp (Trường, Tỉnh, TW)
+  if (lower.includes("cấp trường") || lower.includes("cấp tỉnh") || lower.includes("cấp trung ương") || lower.includes("so sánh các cấp") || lower.includes("khác nhau giữa các cấp")) {
+    return `🏛️ **Phân cấp danh hiệu Sinh viên 5 tốt (${namHoc}):**\n\n` +
+           `Hệ thống xét chọn theo trình tự từ dưới lên trên:\n` +
+           `- 🏫 **Cấp Trường/Học viện:** Là mức nền tảng, điều kiện vừa sức với đa số sinh viên tích cực.\n` +
+           `- 🏙️ **Cấp Tỉnh/Thành phố:** Yêu cầu cao hơn, thường chọn từ những sinh viên đã đạt cấp Trường xuất sắc.\n` +
+           `- 🇻🇳 **Cấp Trung ương (Quốc gia):** Danh hiệu cao quý nhất, đòi hỏi thành tích vượt trội (như bài báo khoa học, giải thưởng Olympic quốc gia, IELTS điểm cao, chiến sĩ thi đua tình nguyện...).`;
+  }
+
+  // 9. Tìm hiểu chi tiết từng tiêu chí cụ thể (chỉ khi có ý hỏi về điều kiện/tiêu chí)
+  const findRule = (kw) => targetRules.find(r => r.ten_tieu_chi.toLowerCase().includes(kw));
+  if (/(?:tiêu chí|yêu cầu|điều kiện|quy định|chi tiết|như thế nào|là gì).*?(?:học|học tập|nckh)/i.test(lower) || /^(học tập tốt|tiêu chí học tập|học tập)$/i.test(lower)) {
+    const r = findRule("học");
+    return r ? `📚 **Chi tiết tiêu chí HỌC TẬP TỐT (Cấp ${capDoName} - ${namHoc}):**\n\n${r.mo_ta}\n\n💡 *Gợi ý hoạt động bổ trợ:* Tham gia NCKH cấp trường, thi Olympic các môn học, viết bài báo hội thảo...` : `📚 Tiêu chí **Học tập tốt** yêu cầu đạt điểm GPA theo quy định của đơn vị và có tinh thần vượt khó, nghiên cứu khoa học.`;
+  }
+  if (/(?:tiêu chí|yêu cầu|điều kiện|quy định|chi tiết|như thế nào|là gì).*?(?:đạo đức|rèn luyện|đrl)/i.test(lower) || /^(đạo đức tốt|tiêu chí đạo đức|đạo đức|điểm rèn luyện)$/i.test(lower)) {
+    const r = findRule("đạo đức");
+    return r ? `💖 **Chi tiết tiêu chí ĐẠO ĐỨC TỐT (Cấp ${capDoName} - ${namHoc}):**\n\n${r.mo_ta}\n\n💡 *Gợi ý:* Chấp hành tốt quy chế, tham gia đầy đủ sinh hoạt lớp, Đoàn/Hội.` : `💖 Tiêu chí **Đạo đức tốt** yêu cầu điểm rèn luyện từ 80 trở lên và không có hình thức kỷ luật.`;
+  }
+  if (/(?:tiêu chí|yêu cầu|điều kiện|quy định|chi tiết|như thế nào|là gì).*?(?:tình nguyện|hiến máu|mùa hè xanh)/i.test(lower) || /^(tình nguyện tốt|tiêu chí tình nguyện|tình nguyện)$/i.test(lower)) {
+    const r = findRule("tình nguyện");
+    return r ? `🤝 **Chi tiết tiêu chí TÌNH NGUYỆN TỐT (Cấp ${capDoName} - ${namHoc}):**\n\n${r.mo_ta}\n\n💡 *Gợi ý:* Các chiến dịch Mùa hè xanh, Tiếp sức mùa thi, Hiến máu nhân đạo, Ngày thứ 7 tình nguyện...` : `🤝 Tiêu chí **Tình nguyện tốt** yêu cầu tham gia ít nhất 1-2 hoạt động tình nguyện hoặc được khen thưởng trong công tác xã hội.`;
+  }
+  if (/(?:tiêu chí|yêu cầu|điều kiện|quy định|chi tiết|như thế nào|là gì).*?(?:thể lực|thể thao|khỏe)/i.test(lower) || /^(thể lực tốt|tiêu chí thể lực|thể lực|sinh viên khỏe)$/i.test(lower)) {
+    const r = findRule("thể lực");
+    return r ? `🏃 **Chi tiết tiêu chí THỂ LỰC TỐT (Cấp ${capDoName} - ${namHoc}):**\n\n${r.mo_ta}\n\n💡 *Gợi ý:* Nhận chứng nhận "Sinh viên khỏe", tham gia các giải chạy bộ (offline/online), giải bóng đá, cầu lông, cờ vua...` : `🏃 Tiêu chí **Thể lực tốt** yêu cầu đạt danh hiệu Sinh viên khỏe hoặc tham gia các giải đấu thể thao.`;
+  }
+  if (/(?:tiêu chí|yêu cầu|điều kiện|quy định|chi tiết|như thế nào|là gì).*?(?:hội nhập|ngoại ngữ|ielts|toeic)/i.test(lower) || /^(hội nhập tốt|tiêu chí hội nhập|hội nhập|ngoại ngữ)$/i.test(lower)) {
+    const r = findRule("hội nhập");
+    return r ? `🌍 **Chi tiết tiêu chí HỘI NHẬP TỐT (Cấp ${capDoName} - ${namHoc}):**\n\n${r.mo_ta}\n\n💡 *Gợi ý:* Chứng chỉ IELTS/TOEIC/B1, tham gia các cuộc thi tiếng Anh, hội thảo quốc tế, hoặc các khóa học kỹ năng mềm.` : `🌍 Tiêu chí **Hội nhập tốt** yêu cầu trình độ ngoại ngữ đạt chuẩn (IELTS/TOEIC/B1) hoặc tích cực tham gia hoạt động giao lưu quốc tế.`;
+  }
+
+  // 10. Tổng hợp toàn bộ quy chế (chỉ khi yêu cầu xem toàn bộ)
+  if (/(?:xem|đọc|toàn văn|chi tiết|đầy đủ|tất cả|liệt kê|cho tôi xem).*?(?:quy chế|5 tiêu chí|năm tiêu chí)/i.test(lower) || /^(quy chế|5 tiêu chí|năm tiêu chí|quy chế là gì|các tiêu chí|toàn bộ quy chế)$/i.test(lower)) {
+    return `📋 **Toàn văn Quy chuẩn 5 Tiêu chí Sinh viên 5 tốt cấp ${capDoName} (${namHoc}):**\n\n${rulesMap}\n\n👉 *Bạn muốn tư vấn sâu hơn về phương pháp đạt tiêu chí nào không?*`;
+  }
+
+  // 11. Câu hỏi giao tiếp nói chung / Trả lời tự nhiên, chuyên sâu như LLM
+  return `🤖 **Trợ lý AI Sinh viên 5 tốt (${namHoc}) xin chia sẻ cùng bạn:**\n\n` +
+         `Tôi lắng nghe và hiểu bạn đang quan tâm đến vấn đề: **"${message}"**.\n\n` +
+         `💡 *Góc trò chuyện & lời khuyên:* Trong quãng đời sinh viên tại trường đại học, ngoài việc học tập kiến thức chuyên môn, điều quan trọng nhất là tinh thần chủ động trải nghiệm, dấn thân vào các hoạt động thực tế và rèn luyện kỹ năng mềm.\n\n` +
+         `👉 Danh hiệu **Sinh viên 5 tốt** chính là chiếc la bàn giúp bạn định hướng rèn luyện cân bằng cả 5 mặt:\n` +
+         `1️⃣ **Học tập tốt:** Nền tảng chuyên môn vững chắc, tư duy nghiên cứu khoa học.\n` +
+         `2️⃣ **Đạo đức tốt:** Tác phong gương mẫu, tích cực sinh hoạt Đoàn/Hội.\n` +
+         `3️⃣ **Thể lực tốt:** Sức khỏe bền bỉ để chinh phục mọi mục tiêu.\n` +
+         `4️⃣ **Tình nguyện tốt:** Trái tim biết chia sẻ và cống hiến cho cộng đồng.\n` +
+         `5️⃣ **Hội nhập tốt:** Bản lĩnh tự tin kết nối toàn cầu và làm chủ ngoại ngữ.\n\n` +
+         `📌 *Bạn có câu hỏi nào về cách phát triển kỹ năng, tính điểm hồ sơ, hay muốn tìm ngay một cuộc thi để lấy giấy chứng nhận không? Hãy thoải mái hỏi tôi nhé!*`;
+}
+
 // 1. Chatbot RAG (SmartBot)
 app.post('/api/ai/chat', async (req, res) => {
   const { message, userId } = req.body;
@@ -87,12 +406,16 @@ app.post('/api/ai/chat', async (req, res) => {
       console.error('Lỗi khi gọi rules API, dùng fallback:', e.message);
     }
 
-    let reply = "Xin lỗi, tôi chưa hiểu rõ ý bạn.";
-    const lowerMsg = message.toLowerCase();
-
-    // Xử lý cấp độ Quy chế
-    let targetRules = activeRules;
+    const defaultRules = [
+      { ten_tieu_chi: "Đạo đức tốt", mo_ta: "Điểm rèn luyện từ 80 điểm trở lên; không vi phạm pháp luật, quy chế của nhà trường." },
+      { ten_tieu_chi: "Học tập tốt", mo_ta: "Điểm trung bình chung học tập đạt từ 3.2/4.0 trở lên; tích cực tham gia nghiên cứu khoa học hoặc các cuộc thi học thuật." },
+      { ten_tieu_chi: "Thể lực tốt", mo_ta: "Đạt danh hiệu Sinh viên khỏe hoặc tham gia các giải thể thao từ cấp Khoa/Trường trở lên." },
+      { ten_tieu_chi: "Tình nguyện tốt", mo_ta: "Tham gia ít nhất 03 ngày tình nguyện trong năm (Mùa hè xanh, hiến máu tình nguyện, tiếp sức mùa thi...) hoặc được khen thưởng về tình nguyện." },
+      { ten_tieu_chi: "Hội nhập tốt", mo_ta: "Chứng chỉ Tiếng Anh tối thiểu B1 (hoặc tương đương) và tham gia các hoạt động hội nhập, kỹ năng mềm, giao lưu quốc tế." }
+    ];
+    let targetRules = (activeRules && activeRules.length > 0) ? activeRules : defaultRules;
     let capDoName = "trường";
+    const lowerMsg = (message || "").toLowerCase();
     if (lowerMsg.includes("thành phố") || lowerMsg.includes("tỉnh")) {
       const cityQc = allQuyChes.find(qc => qc.don_vi?.cap_do === 'TINH' || qc.don_vi?.cap_do === 'TINH_THANH');
       if (cityQc) {
@@ -107,40 +430,26 @@ app.post('/api/ai/chat', async (req, res) => {
       }
     }
 
-    // Hàm tìm tiêu chí theo từ khóa
-    const findRule = (keyword) => {
-      const rule = targetRules.find(r => r.ten_tieu_chi.toLowerCase().includes(keyword));
-      return rule ? rule.mo_ta : null;
-    };
+    // Tạo System Prompt cho LLM thực tế
+    const systemPrompt = `Bạn là trợ lý AI tư vấn "Sinh viên 5 tốt" của hệ thống, năm học ${namHoc}, cấp ${capDoName}.
 
-    if (lowerMsg.includes("học tập") || lowerMsg.includes("điểm")) {
-      const ruleDesc = findRule("học tập");
-      reply = ruleDesc ? `Theo Quy chế SV5T cấp ${capDoName} năm ${namHoc}, tiêu chí **Học tập tốt** yêu cầu:\n\n${ruleDesc}` :
-        `Để đạt tiêu chí **Học tập tốt** theo Quy chế cấp ${capDoName}, bạn cần đạt đủ điều kiện của đơn vị đề ra.`;
-    } else if (lowerMsg.includes("đạo đức")) {
-      const ruleDesc = findRule("đạo đức");
-      reply = ruleDesc ? `Theo Quy chế SV5T cấp ${capDoName} năm ${namHoc}, tiêu chí **Đạo đức tốt** yêu cầu:\n\n${ruleDesc}` :
-        `Đối với tiêu chí **Đạo đức tốt** cấp ${capDoName}, vui lòng tham khảo chi tiết của hội sinh viên cấp đó.`;
-    } else if (lowerMsg.includes("tình nguyện")) {
-      const ruleDesc = findRule("tình nguyện");
-      reply = ruleDesc ? `Theo Quy chế SV5T cấp ${capDoName} năm ${namHoc}, tiêu chí **Tình nguyện tốt** yêu cầu:\n\n${ruleDesc}` :
-        `Tiêu chí **Tình nguyện tốt** cấp ${capDoName} yêu cầu bạn hoàn thành hoạt động tình nguyện theo chuẩn đơn vị.`;
-    } else if (lowerMsg.includes("thể lực")) {
-      const ruleDesc = findRule("thể lực");
-      reply = ruleDesc ? `Theo Quy chế SV5T cấp ${capDoName} năm ${namHoc}, tiêu chí **Thể lực tốt** yêu cầu:\n\n${ruleDesc}` :
-        `Với **Thể lực tốt** cấp ${capDoName}, bạn cần đạt 'Sinh viên khỏe' hoặc tham gia giải thể thao.`;
-    } else if (lowerMsg.includes("hội nhập")) {
-      const ruleDesc = findRule("hội nhập");
-      reply = ruleDesc ? `Theo Quy chế SV5T cấp ${capDoName} năm ${namHoc}, tiêu chí **Hội nhập tốt** yêu cầu:\n\n${ruleDesc}` :
-        `Tiêu chí **Hội nhập tốt** cấp ${capDoName} yêu cầu chứng chỉ ngoại ngữ hoặc hoạt động hội nhập.`;
-    } else if (lowerMsg.includes("thời gian") || lowerMsg.includes("hạn")) {
-      reply = `Hiện tại là thời gian thu thập minh chứng cho năm học ${namHoc}. Bạn hãy tranh thủ cập nhật các minh chứng nhé!`;
-    } else if (lowerMsg.includes("đầy đủ") || lowerMsg.includes("quy chế") || lowerMsg.includes("chi tiết")) {
-      reply = `Dựa trên Quy chế SV5T năm ${namHoc}, sau đây là chi tiết 5 tiêu chí:\n\n` +
-        activeRules.map(r => `**${r.ten_tieu_chi}**\n${r.mo_ta || 'Đang cập nhật'}`).join('\n\n');
-    } else {
-      reply = `Dựa trên Quy chế SV5T năm ${namHoc}, để đạt danh hiệu bạn cần hoàn thiện 5 tiêu chí: ${activeRules.map(r => r.ten_tieu_chi).join(', ')}. Bạn cần hỏi chi tiết về tiêu chí nào?`;
+Quy chế hiện hành (dữ liệu gốc, luôn ưu tiên độ chính xác so với đây):
+${JSON.stringify(targetRules, null, 2)}
+
+Cách trả lời:
+1. Đọc kỹ câu hỏi, xác định sinh viên đang hỏi về tiêu chí nào hoặc đang mô tả hồ sơ cá nhân (GPA, điểm rèn luyện, chứng chỉ...).
+2. Nếu sinh viên đưa ra số liệu cụ thể, hãy đối chiếu với quy chế và phân tích: đạt/chưa đạt, thiếu gì, nên bổ sung minh chứng gì.
+3. Nếu câu hỏi mơ hồ, hãy hỏi lại 1 câu ngắn để làm rõ thay vì đoán bừa.
+4. Nếu ngoài phạm vi quy chế (tâm sự, định hướng nghề nghiệp, kỹ năng mềm...), vẫn trả lời tự nhiên, hữu ích như một người tư vấn thật, không né tránh.
+5. Giữ mạch hội thoại: tham chiếu lại những gì sinh viên đã nói ở lượt trước nếu liên quan.
+6. Markdown, emoji vừa phải, ngắn gọn súc tích, tiếng Việt.`;
+
+    const history = getHistory(userId || 'anonymous');
+    let reply = await callExternalLLM(message, systemPrompt, history);
+    if (!reply) {
+      reply = generateIntelligentFallback(message, targetRules, capDoName, namHoc, allQuyChes);
     }
+    pushHistory(userId || 'anonymous', message, reply);
 
     const chunks = reply.split(' ');
     let currentText = "";
@@ -154,7 +463,7 @@ app.post('/api/ai/chat', async (req, res) => {
         object: { sb: { card_data: [{ type: "text", text: currentText }] } }
       });
       res.write('data: ' + payload + '\n\n');
-      await new Promise(r => setTimeout(r, 20));
+      await new Promise(r => setTimeout(r, 15));
     }
 
     res.end();
@@ -814,6 +1123,26 @@ async function runDailyCronScraper() {
 setInterval(runDailyCronScraper, 24 * 60 * 60 * 1000);
 setTimeout(runDailyCronScraper, 3000);
 
+// Hàm kiểm tra hoạt động gợi ý có bị trùng tên với minh chứng sinh viên đã nộp hay không
+function isAlreadyUploaded(item, uploadedNames) {
+  if (!uploadedNames || !Array.isArray(uploadedNames) || uploadedNames.length === 0) return false;
+  const recName = (item.ten_hoat_dong || item.title || '').toLowerCase().replace(/^\[.*?\]\s*/g, '').trim();
+  if (!recName) return false;
+  return uploadedNames.some(pName => {
+    if (!pName) return false;
+    // Kiểm tra chứa chuỗi
+    if (pName.includes(recName) || recName.includes(pName)) return true;
+    // Kiểm tra độ trùng lặp từ vựng (chỉ tính từ có ý nghĩa > 3 ký tự)
+    const wordsP = pName.split(/\s+/).filter(w => w.length >= 3);
+    const wordsR = recName.split(/\s+/).filter(w => w.length >= 3);
+    if (wordsP.length >= 3 && wordsR.length >= 3) {
+      const matchCount = wordsP.filter(w => wordsR.includes(w)).length;
+      if (matchCount / Math.min(wordsP.length, wordsR.length) >= 0.7) return true;
+    }
+    return false;
+  });
+}
+
 app.get('/api/ai/recommendations/:studentId', async (req, res) => {
   try {
     const missingQuery = req.query.missing;
@@ -824,8 +1153,33 @@ app.get('/api/ai/recommendations/:studentId', async (req, res) => {
     // Lọc các hoạt động thuộc tiêu chí (isStillValid != false và is_active !== false)
     let recommendations = db.filter(item => item.is_active !== false && missingCriteriaList.includes(item.matched_criteria));
 
+    // Lọc bỏ các hoạt động mà sinh viên đã nộp minh chứng (có tên giống hoặc gửi qua query)
+    let uploadedNames = [];
+    const authHeader = req.headers.authorization || req.headers.Authorization;
+    if (authHeader && req.params.studentId !== 'default') {
+      try {
+        const proofRes = await axios.get('http://proof:3005/proofs/me', {
+          headers: { Authorization: authHeader },
+          timeout: 4000
+        });
+        if (proofRes.data && Array.isArray(proofRes.data)) {
+          uploadedNames = proofRes.data.map(p => (p.ten_minh_chung || '').toLowerCase().replace(/^\[.*?\]\s*/g, '').trim()).filter(Boolean);
+        }
+      } catch (e) {
+        // Ignore nếu gọi sang proof-service lỗi
+      }
+    }
+    if (req.query.completed) {
+      const qCompleted = decodeURIComponent(req.query.completed).split('|||').map(s => s.toLowerCase().replace(/^\[.*?\]\s*/g, '').trim()).filter(Boolean);
+      uploadedNames.push(...qCompleted);
+    }
+
+    if (uploadedNames.length > 0) {
+      recommendations = recommendations.filter(item => !isAlreadyUploaded(item, uploadedNames));
+    }
+
     if (recommendations.length === 0) {
-      recommendations = db.filter(item => item.is_active !== false).slice(0, 20);
+      recommendations = db.filter(item => item.is_active !== false && !isAlreadyUploaded(item, uploadedNames)).slice(0, 20);
     } else {
       recommendations = recommendations.slice(0, 20);
     }

@@ -102,6 +102,8 @@ services:
     ports:
       - "3008:3008"
     volumes:
+      - ./services/ai-service:/app
+      - /app/node_modules
       - ./api.md:/app/api.md
 
   gateway-frontend:

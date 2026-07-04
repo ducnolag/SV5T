@@ -44,6 +44,43 @@ Hệ thống bao gồm các dịch vụ sau, giao tiếp thông qua RESTful APIs
 - **Docker** và **Docker Compose** đã được cài đặt (trên Windows cần mở ứng dụng Docker Desktop).
 - Node.js >= 20.x (nếu muốn test hay thao tác với các gói NPM).
 
+### ⚡ Hướng dẫn Chạy dự án cho Người mới (Máy chưa có gì - Từ Zero đến Running)
+
+Nếu bạn vừa clone dự án này từ Git về một máy tính mới hoàn toàn, hãy thực hiện lần lượt 4 bước đơn giản sau:
+
+**Bước 1: Mở Terminal tại thư mục gốc dự án**
+```bash
+cd hackathon
+```
+
+**Bước 2: Tạo file cấu hình môi trường (`.env`) - BƯỚC BẮT BUỘC**
+Vì lý do bảo mật, file `.env` không được lưu trên Git. Bạn cần copy từ file mẫu `.env.example` có sẵn trong dự án:
+- **Trên Windows (cmd / PowerShell):**
+  ```cmd
+  copy .env.example .env
+  copy services\ai-service\.env.example services\ai-service\.env
+  ```
+- **Trên Linux / macOS / Git Bash:**
+  ```bash
+  cp .env.example .env
+  cp services/ai-service/.env.example services/ai-service/.env
+  ```
+*👉 **Mẹo:** Mở file `.env` vừa tạo và điền các API Key AI của bạn (`GEMINI_API_KEY`, `GROQ_API_KEY`, `SERPER_API_KEY`...). Nếu không điền, hệ thống Chatbot sẽ tự động chuyển sang chế độ suy luận chuyên gia nội bộ (Fallback) mà không cần gọi API ngoại.*
+
+**Bước 3: Khởi chạy toàn bộ hệ thống bằng 1 Lệnh duy nhất**
+Đảm bảo ứng dụng **Docker Desktop** đang chạy trên máy bạn, sau đó gõ lệnh:
+```bash
+docker-compose up -d --build
+```
+*(Quá trình build lần đầu tiên sẽ mất khoảng 3 - 5 phút để tải Docker Images, compile 8 Microservices + React Frontend và tự động nạp dữ liệu chuẩn vào PostgreSQL & MongoDB).*
+
+**Bước 4: Kiểm tra và Trải nghiệm**
+- Gõ lệnh `docker-compose ps` để kiểm tra. Khi toàn bộ 11 container hiển thị trạng thái **Up / Running**, hệ thống đã hoàn tất!
+- Truy cập ngay vào giao diện Web: [http://localhost:3000](http://localhost:3000)
+- Sử dụng các tài khoản kiểm thử có sẵn: `admin@sv5t.vn`, `cbtw@sv5t.vn`, `cbtinh@sv5t.vn`, `cbtruong@sv5t.vn` (Mật khẩu: `@Duclag123` / `Admin@123`).
+
+---
+
 ### 🚀 Chạy toàn bộ hệ thống bằng 1 lệnh (Được khuyến nghị)
 
 Dự án đã được cấu hình chuẩn tối ưu hóa cho Docker Compose, bao gồm tự động khởi tạo cơ sở dữ liệu PostgreSQL & MongoDB, đồng bộ hóa phiên bản Prisma ORM và đóng gói 8 dịch vụ Microservices + Gateway Frontend.

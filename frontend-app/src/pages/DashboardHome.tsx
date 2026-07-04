@@ -110,10 +110,19 @@ export default function DashboardHome() {
     }).catch(() => {});
 
     if (isRole('SINH_VIEN')) {
-      // Luôn tải đề xuất hoạt động (từ Cron Job/Facebook) ngay cả khi sinh viên chưa tạo hồ sơ
-      api.get(`/ai/recommendations/${user?.id || 'default'}?t=${Date.now()}`)
-         .then(r => setRecs(r.data || []))
-         .catch(() => {});
+      // Luôn tải đề xuất hoạt động, kết hợp danh sách minh chứng đã nộp để lọc bỏ các hoạt động bị trùng
+      api.get('/proofs/me').then(proofRes => {
+        const userProofs = proofRes.data || [];
+        const completedNames = userProofs.map((p: any) => p.ten_minh_chung || '').filter(Boolean).join('|||');
+
+        api.get(`/ai/recommendations/${user?.id || 'default'}?completed=${encodeURIComponent(completedNames)}&t=${Date.now()}`)
+           .then(r => setRecs(r.data || []))
+           .catch(() => {});
+      }).catch(() => {
+        api.get(`/ai/recommendations/${user?.id || 'default'}?t=${Date.now()}`)
+           .then(r => setRecs(r.data || []))
+           .catch(() => {});
+      });
 
       api.get('/applications/my').then(r => {
         if (r.data[0]) {
@@ -121,6 +130,7 @@ export default function DashboardHome() {
             setMyApp(res.data);
             api.get('/proofs/me').then(proofRes => {
               const userProofs = proofRes.data || [];
+              const completedNames = userProofs.map((p: any) => p.ten_minh_chung || '').filter(Boolean).join('|||');
               if (res.data.quy_che?.tieu_chis) {
                 const progress = CRITERIA_NAMES.map(name => {
                   const tc = res.data.quy_che.tieu_chis.find((t: any) => t.ten_tieu_chi.includes(name.split(' ')[0]));
@@ -138,8 +148,8 @@ export default function DashboardHome() {
                 setCriteriaProgress(progress);
                 const missing = CRITERIA_NAMES.filter((_, i) => progress[i] === 0);
                 if (missing.length > 0) {
-                  api.get(`/ai/recommendations/${user?.id || 'default'}?missing=${encodeURIComponent(missing.join(','))}&t=${Date.now()}`)
-                     .then(r => setRecs(r.data))
+                  api.get(`/ai/recommendations/${user?.id || 'default'}?missing=${encodeURIComponent(missing.join(','))}&completed=${encodeURIComponent(completedNames)}&t=${Date.now()}`)
+                     .then(r => setRecs(r.data || []))
                      .catch(() => {});
                 }
               }
