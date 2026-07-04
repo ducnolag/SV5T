@@ -385,7 +385,6 @@ function extractFutureDates(text) {
 
 
 const cheerio = require('cheerio');
-const axios = require('axios');
 const https = require('https');
 
 async function fetchOgImage(url) {

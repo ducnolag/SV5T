@@ -41,39 +41,44 @@ Hệ thống bao gồm các dịch vụ sau, giao tiếp thông qua RESTful APIs
 ## 🛠 Hướng dẫn Khởi chạy (Local Development)
 
 ### 📋 Yêu cầu hệ thống
-- **Docker** và **Docker Compose** đã được cài đặt.
-- Node.js >= 20.x (nếu muốn chạy code trực tiếp không qua Docker).
+- **Docker** và **Docker Compose** đã được cài đặt (trên Windows cần mở ứng dụng Docker Desktop).
+- Node.js >= 20.x (nếu muốn test hay thao tác với các gói NPM).
 
 ### 🚀 Chạy toàn bộ hệ thống bằng 1 lệnh (Được khuyến nghị)
 
-Dự án đã được cấu hình Docker Compose hoàn chỉnh, bao gồm tự động khởi tạo cơ sở dữ liệu và build mã nguồn.
+Dự án đã được cấu hình chuẩn tối ưu hóa cho Docker Compose, bao gồm tự động khởi tạo cơ sở dữ liệu PostgreSQL & MongoDB, đồng bộ hóa phiên bản Prisma ORM và đóng gói 8 dịch vụ Microservices + Gateway Frontend.
 
-1. Clone dự án:
+1. Mở terminal tại thư mục gốc dự án:
 ```bash
-git clone https://github.com/your-username/sv5t-hackathon.git
-cd sv5t-hackathon
+cd D:\hackathon
 ```
 
-2. Build và khởi chạy các containers ngầm:
+2. Build và khởi chạy toàn bộ 11 containers ngầm:
 ```bash
 docker-compose up -d --build
 ```
-*(Lưu ý: Quá trình build lần đầu tiên sẽ mất khoảng 3 - 5 phút để tải Image Database và compile NestJS/ReactJS)*
+*(Hoặc dùng `docker compose up -d --build` nếu dùng Docker CLI mới)*
+*(Lưu ý: Quá trình build lần đầu tiên mất khoảng 3 - 5 phút để compile NestJS và nạp cơ sở dữ liệu)*
 
-3. Kiểm tra trạng thái hệ thống:
+3. Kiểm tra trạng thái hoạt động:
 ```bash
 docker-compose ps
 ```
+Khi toàn bộ 11 container đều hiển thị trạng thái **Up / Running**, hệ thống đã sẵn sàng!
 
-4. Truy cập Hệ thống:
-- **Web App & Gateway:** [http://localhost:3000](http://localhost:3000)
+4. Truy cập và trải nghiệm Hệ thống:
+- 👉 **Web App & Gateway:** [http://localhost:3000](http://localhost:3000)
+
+### 💡 Lưu ý quan trọng & Tài khoản kiểm thử (Hackathon Tip)
+- **Tài khoản mặc định trong DB:** Bạn có thể dùng các email như `admin@sv5t.vn`, `cbtw@sv5t.vn`, `cbtinh@sv5t.vn`, `cbtruong@sv5t.vn` (Mật khẩu: `@Duclag123` / `Admin@123` hoặc dùng tính năng Quên mật khẩu để đặt lại).
+- **Tính năng Quên mật khẩu:** Để thuận tiện cho hội đồng kiểm thử Hackathon mà không cần cấu hình Mail Server thực tế (SMTP), mã xác thực OTP (6 số) sẽ được hệ thống tự động sinh và **hiển thị trực tiếp trên thông báo màn hình web** khi bạn nhập email hợp lệ.
+- **Làm mới kết nối Gateway:** Nếu bạn vừa khởi động lại một dịch vụ riêng lẻ trong Docker, hãy chạy lệnh `docker-compose restart gateway-frontend` để NGINX cập nhật lại bảng định danh IP nội bộ mới nhất.
 
 ### 🛑 Dừng hệ thống
 ```bash
 docker-compose down
 ```
-*(Thêm cờ `-v` nếu bạn muốn xóa sạch dữ liệu Database)*
-
+*(Thêm cờ `-v` nếu bạn muốn xóa sạch toàn bộ dữ liệu Database để khởi tạo lại từ đầu: `docker-compose down -v`)*
 ---
 
 ## ☁️ Hướng dẫn Triển khai (Production Deployment)

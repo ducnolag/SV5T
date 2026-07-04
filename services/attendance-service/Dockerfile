@@ -13,7 +13,7 @@ COPY services/attendance-service/package*.json ./services/attendance-service/
 # Install shared-database deps
 WORKDIR /app/services/shared-database
 RUN npm install
-RUN npx prisma generate
+RUN npx prisma@5.22.0 generate
 
 # Install service deps
 WORKDIR /app/services/attendance-service
