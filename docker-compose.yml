@@ -97,6 +97,10 @@ services:
     build:
       context: services/ai-service
       dockerfile: Dockerfile
+    environment:
+      - SERPER_API_KEY=e68e8e1a56f5378a302e84588d17d49bb073846a
+      - GOOGLE_API_KEY=AIzaSyDryOPjIu1gPeT9QIyQYJkZOdNouAtRBj0
+      - GOOGLE_CSE_ID=d586c07a74dde48ac
     ports:
       - "3008:3008"
     volumes:

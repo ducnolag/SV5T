@@ -14,7 +14,15 @@ interface Recommendation {
   source: string;
   date: string;
   postLink?: string;
+  link?: string;
   pictures?: string[];
+  tieu_chi?: string;
+  ten_hoat_dong?: string;
+  thoi_gian_bat_dau?: string;
+  thoi_gian_ket_thuc?: string;
+  hinh_thuc?: string;
+  co_chung_nhan?: boolean;
+  huong_dan_lay_chung_nhan?: string;
 }
 
 function CircleProgress({ value, label, color }: { value: number; label: string; color: string }) {
@@ -102,6 +110,11 @@ export default function DashboardHome() {
     }).catch(() => {});
 
     if (isRole('SINH_VIEN')) {
+      // Luôn tải đề xuất hoạt động (từ Cron Job/Facebook) ngay cả khi sinh viên chưa tạo hồ sơ
+      api.get(`/ai/recommendations/${user?.id || 'default'}?t=${Date.now()}`)
+         .then(r => setRecs(r.data || []))
+         .catch(() => {});
+
       api.get('/applications/my').then(r => {
         if (r.data[0]) {
           api.get(`/applications/${r.data[0].id}`).then(res => {
@@ -260,22 +273,22 @@ export default function DashboardHome() {
               `}} />
               {recs.map(r => {
                 const getFallback = (criteria: string | undefined) => {
-                  if (!criteria) return 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=80';
-                  if (criteria.includes('Học')) return 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&w=800&q=80';
-                  if (criteria.includes('Đạo')) return 'https://images.unsplash.com/photo-1615461066841-6116e61058f4?auto=format&fit=crop&w=800&q=80';
-                  if (criteria.includes('Thể')) return 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=800&q=80';
-                  if (criteria.includes('Tình')) return 'https://images.unsplash.com/photo-1593113589914-07599014dd8f?auto=format&fit=crop&w=800&q=80';
-                  if (criteria.includes('Hội')) return 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=800&q=80';
-                  return 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=80';
+                  if (!criteria) return 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80';
+                  if (criteria.includes('Học')) return 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80';
+                  if (criteria.includes('Đạo')) return 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80';
+                  if (criteria.includes('Thể')) return 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=800&q=80';
+                  if (criteria.includes('Tình')) return 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?auto=format&fit=crop&w=800&q=80';
+                  if (criteria.includes('Hội')) return 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=800&q=80';
+                  return 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80';
                 };
                 
                 const imgSrc = (r.pictures && r.pictures.length > 0) ? r.pictures[0] : getFallback(r.matched_criteria);
                 
                 return (
-                <a key={r.id} href={r.postLink || '#'} target="_blank" rel="noopener noreferrer" 
-                  className="snap-center w-[300px] md:w-[350px] flex-shrink-0 flex flex-col rounded-3xl bg-white border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_30px_-8px_rgba(79,70,229,0.15)] hover:-translate-y-1 hover:border-indigo-100 transition-all duration-300 cursor-pointer group overflow-hidden relative" style={{ height: 'auto' }}>
+                <a key={r.id} href={r.postLink || r.link || '#'} target="_blank" rel="noopener noreferrer" 
+                  className="snap-center w-[310px] md:w-[360px] flex-shrink-0 flex flex-col rounded-3xl bg-white border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] hover:shadow-[0_16px_35px_-8px_rgba(79,70,229,0.2)] hover:-translate-y-1.5 hover:border-indigo-200 transition-all duration-300 cursor-pointer group overflow-hidden relative" style={{ height: 'auto' }}>
                   
-                  <div className="w-full h-[200px] flex-shrink-0 overflow-hidden relative bg-slate-50">
+                  <div className="w-full h-[190px] flex-shrink-0 overflow-hidden relative bg-slate-100">
                     <img 
                       src={imgSrc} 
                       alt={r.title} 
@@ -283,37 +296,77 @@ export default function DashboardHome() {
                       onError={(e) => { e.currentTarget.src = getFallback(r.matched_criteria) }}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" 
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/10 to-transparent opacity-90"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/85 via-slate-900/15 to-transparent opacity-90"></div>
                     
                     {/* Sleek Criteria Tag */}
-                    <div className="absolute top-4 left-4 z-30">
-                      <span className="flex items-center gap-1.5 bg-white/95 backdrop-blur text-slate-800 px-3 py-1 rounded-lg text-xs font-bold tracking-wide shadow-sm">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                        {r.matched_criteria}
+                    <div className="absolute top-3.5 left-3.5 z-30 flex items-center gap-2">
+                      <span className="flex items-center gap-1.5 bg-white/95 backdrop-blur-md text-slate-800 px-3 py-1 rounded-full text-xs font-bold tracking-wide shadow-sm border border-white/20">
+                        <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+                        {r.matched_criteria || r.tieu_chi + ' tốt'}
                       </span>
                     </div>
 
-                    <div className="absolute bottom-4 left-4 z-30">
-                      <span className="text-white/90 text-[11px] font-semibold bg-black/30 backdrop-blur-md px-2.5 py-1 rounded-md">
-                        {r.date}
+                    {r.co_chung_nhan && (
+                      <div className="absolute top-3.5 right-3.5 z-30">
+                        <span className="bg-amber-500/90 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+                          🏆 Chứng nhận
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="absolute bottom-3.5 left-3.5 z-30 right-3.5 flex justify-between items-end">
+                      <span className="text-white text-[11px] font-medium bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10">
+                        ⏳ Hạn: {r.thoi_gian_ket_thuc || r.date || 'Xem trên bài viết'}
+                      </span>
+                      <span className="text-indigo-200 text-[11px] font-medium bg-indigo-950/60 backdrop-blur-md px-2.5 py-1 rounded-lg border border-indigo-500/30">
+                        👆 Bấm đọc ngay
                       </span>
                     </div>
                   </div>
                   
-                  <div className="p-6 flex flex-col flex-grow bg-white">
-                    <h4 className="font-bold text-slate-800 line-clamp-3 leading-snug group-hover:text-indigo-600 transition-colors mb-4 text-[17px]">{r.title}</h4>
-                    
-                    <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
-                      <div className="flex items-center gap-2 max-w-[80%]">
-                        <div className="w-6 h-6 rounded-md bg-indigo-50 flex items-center justify-center flex-shrink-0 text-indigo-600">
-                          <Zap size={12} fill="currentColor" />
+                  <div className="p-5 flex flex-col flex-grow bg-white justify-between">
+                    <div>
+                      <h4 className="font-bold text-slate-800 line-clamp-2 leading-snug group-hover:text-indigo-600 transition-colors mb-2.5 text-[16px]">
+                        {r.ten_hoat_dong || r.title}
+                      </h4>
+                      
+                      {r.hinh_thuc && (
+                        <div className="text-[12.5px] text-slate-600 line-clamp-2 mb-3 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 font-normal">
+                          <span className="font-semibold text-indigo-600">💡 Hình thức:</span> {r.hinh_thuc}
                         </div>
-                        <p className="text-[13px] text-slate-600 font-medium truncate">
-                          {r.source}
+                      )}
+                    </div>
+                    
+                    <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2 max-w-[60%]">
+                        <div className="w-6 h-6 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0 text-indigo-600 font-bold text-xs">
+                          f
+                        </div>
+                        <p className="text-[12.5px] text-slate-500 font-medium truncate">
+                          {r.source || 'facebook.com'}
                         </p>
                       </div>
-                      <div className="text-slate-300 group-hover:text-indigo-600 transition-colors">
-                        <ExternalLink size={18} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            try {
+                              await api.post(`/ai/recommendations/${r.id}/report-broken`);
+                              alert('Cảm ơn bạn! Hệ thống đã tiếp nhận báo lỗi link hỏng để dọn dẹp.');
+                            } catch (err) {
+                              alert('Đã ghi nhận phản hồi lỗi link.');
+                            }
+                          }}
+                          className="text-[11px] text-slate-400 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded-md transition-all flex items-center gap-1 border border-transparent hover:border-red-100"
+                          title="Báo lỗi nếu link bài viết này bị xóa hoặc không khả dụng"
+                        >
+                          ⚠️ Báo lỗi
+                        </button>
+                        <div className="text-slate-400 group-hover:text-indigo-600 group-hover:bg-indigo-50 p-1.5 rounded-lg transition-all">
+                          <ExternalLink size={16} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                        </div>
                       </div>
                     </div>
                   </div>
