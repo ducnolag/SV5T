@@ -1,137 +1,295 @@
-# Hệ thống Xét duyệt Danh hiệu "Sinh viên 5 tốt"
+<div align="center">
 
-![SV5T Logo](frontend-app/public/favicon.png)
+# 🎓 Hệ thống Xét duyệt Danh hiệu "Sinh viên 5 Tốt"
 
-Hệ thống số hóa toàn diện quy trình đăng ký, nộp minh chứng, thẩm định và phê duyệt danh hiệu "Sinh viên 5 tốt" các cấp (Cấp Trường - Cấp Tỉnh/Thành phố - Cấp Trung ương). Dự án được thiết kế theo kiến trúc Microservices hiện đại, khả năng mở rộng cao và đảm bảo hiệu năng.
+**Nền tảng số hóa toàn diện quy trình xét duyệt danh hiệu Sinh viên 5 Tốt các cấp**
+
+[![NestJS](https://img.shields.io/badge/NestJS-11.x-E0234E?style=flat-square&logo=nestjs&logoColor=white)](https://nestjs.com/)
+[![React](https://img.shields.io/badge/React-19.x-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docs.docker.com/compose/)
+[![NGINX](https://img.shields.io/badge/NGINX-Gateway-009639?style=flat-square&logo=nginx&logoColor=white)](https://nginx.org/)
+[![License](https://img.shields.io/badge/License-Hackathon-orange?style=flat-square)](./LICENSE)
+
+</div>
+
+---
+
+## 📋 Mục lục
+
+- [Tổng quan](#-tổng-quan)
+- [Tính năng nổi bật](#-tính-năng-nổi-bật)
+- [Kiến trúc hệ thống](#-kiến-trúc-hệ-thống)
+- [Tech Stack](#-tech-stack)
+- [Cấu trúc dự án](#-cấu-trúc-dự-án)
+- [Hướng dẫn cài đặt](#-hướng-dẫn-cài-đặt)
+- [Tài khoản kiểm thử](#-tài-khoản-kiểm-thử)
+- [Tài liệu kỹ thuật](#-tài-liệu-kỹ-thuật)
+- [Giấy phép](#-giấy-phép)
+
+---
+
+## 🌟 Tổng quan
+
+Hệ thống số hóa toàn diện quy trình đăng ký, nộp minh chứng, thẩm định và phê duyệt danh hiệu **"Sinh viên 5 Tốt"** qua 3 cấp (Trường → Tỉnh/Thành phố → Trung ương). Được thiết kế theo kiến trúc **Microservices**, đóng gói trong **10 Docker containers**, khởi chạy toàn bộ bằng **1 lệnh duy nhất**.
+
+---
 
 ## 🚀 Tính năng nổi bật
 
-- **Kiến trúc Vi dịch vụ (Microservices):** Tách biệt các domain (Auth, Unit, Activity, Application...) đảm bảo tính module hóa và dễ dàng mở rộng.
-- **Quy trình phân cấp phê duyệt:** Hỗ trợ quy trình nghiệp vụ chặt chẽ, từ Trường -> Thành phố -> Trung ương.
-- **Chống gian lận (AI/Hash):** Tự động băm (hashing) file minh chứng để phát hiện nộp trùng lặp; tích hợp AI cảnh báo nộp sai tiêu chí (tự nhận diện hình ảnh/chứng nhận).
-- **E-KYC:** Định danh sinh viên.
-- **Real-time WebSockets:** Thông báo thời gian thực trạng thái hồ sơ.
-- **Thống kê & Báo cáo:** Tự động sinh biểu đồ, theo dõi tỷ lệ hồ sơ, xuất báo cáo PDF chuẩn in ấn A4.
+| # | Tính năng | Mô tả |
+|---|---|---|
+| 🔐 | **VNPT eKYC thực** | Xác thực định danh sinh viên bằng OCR CCCD (mặt trước + mặt sau) + So khớp khuôn mặt (Face Compare) qua API VNPT thật |
+| 🏗️ | **Microservices** | 6 services NestJS + 1 AI service Express, giao tiếp qua REST API, chia sẻ chung Prisma schema |
+| 📊 | **Dashboard real-time** | Biểu đồ thống kê Recharts + Thông báo WebSocket (Socket.io) |
+| 🤖 | **AI Chatbot (RAG)** | Hỏi đáp quy chế SV5T qua Gemini/Groq, tự động chuyển Expert Fallback khi không có API key |
+| 🔍 | **AI OCR + Chống gian lận** | Tesseract.js OCR bóc tách minh chứng + Hash MD5 phát hiện nộp trùng lặp |
+| 📋 | **Xét duyệt phân cấp 3 tuyến** | Trường → Tỉnh/TP → Trung ương, AI sơ duyệt Cờ Xanh/Vàng/Đỏ hỗ trợ cán bộ |
+| 📄 | **Xuất báo cáo PDF** | PDF chuẩn A4 theo từng cấp quản lý |
+| 🔔 | **Thông báo real-time** | WebSocket push notification cho mọi sự kiện quan trọng |
+
+---
+
+## 🏗 Kiến trúc hệ thống
+
+```
+                    ┌─────────────────────────────────┐
+                    │         Internet / Browser       │
+                    └────────────────┬────────────────┘
+                                     │
+                    ┌────────────────▼────────────────┐
+                    │   gateway-frontend (NGINX:3000) │
+                    │   React SPA + Reverse Proxy     │
+                    │   Rate Limiting + WebSocket Up  │
+                    └────────────────┬────────────────┘
+                                     │
+       ┌─────────┬─────────┬─────────┼────────┬─────────┬─────────┐
+       │         │         │         │        │         │         │
+  ┌────▼───┐┌────▼───┐┌────▼───┐┌────▼───┐┌───▼────┐┌───▼───┐┌────▼───┐
+  │  auth  ││  unit  ││activity││ proof  ││applica-││notif- ││   ai   │
+  │ :3001  ││ :3002  ││ :3003  ││ :3005  ││tion    ││ication││ :3008  │
+  │NestJS  ││NestJS  ││NestJS  ││ NestJS ││:3006   ││:3007  ││Express │
+  └───┬────┘└───┬────┘└───┬────┘└────┬───┘└───┬────┘└───┬───┘└────┬───┘
+      │         │         │          │        │         │         │
+      └─────────┴─────────┴─────┬────┴────────┴────┬────┘         │
+                                │                  │              │
+                    ┌───────────▼────────┐ ┌───────▼─────┐        │
+                    │ PostgreSQL 15      │ │ MongoDB 6   │        │   VNPT APIs
+                    │ (Prisma ORM)       │ │ (Audit Log) │        │   Gemini/Groq
+                    └────────────────────┘ └─────────────┘        │
+                                                           Socket.io
+```
+
+---
 
 ## 💻 Tech Stack
 
-- **Frontend:** React 19, Vite, Tailwind CSS, Recharts.
-- **Backend:** NestJS, Socket.io, Prisma ORM, Mongoose.
-- **Database:** PostgreSQL 15 (Relational Data), MongoDB 6 (Log & Audit Data).
-- **Gateway & Proxy:** NGINX.
-- **Containerization:** Docker & Docker Compose.
+<table>
+<tr>
+<td width="50%">
+
+### Frontend
+- **React** 19.x + **TypeScript** 6.x
+- **Vite** 8.x (Build tool)
+- **Tailwind CSS** 3.4
+- **Recharts** 3.x (Dashboard)
+- **Socket.io Client** 4.x (WebSocket)
+- **Lucide React** (Icons)
+
+</td>
+<td width="50%">
+
+### Backend
+- **NestJS** 11.x (6 services)
+- **Express.js** 5.x (AI service)
+- **Prisma** ORM (Shared schema)
+- **Mongoose** 9.x (MongoDB)
+- **Passport + JWT** (Auth)
+- **Bcrypt** 6.x (Password hash)
+- **Socket.io** 4.x (WebSocket server)
+
+</td>
+</tr>
+<tr>
+<td>
+
+### Database
+- **PostgreSQL** 15 Alpine (Relational)
+- **MongoDB** 6 Jammy (Audit Log)
+
+</td>
+<td>
+
+### Infrastructure
+- **Docker** + **Docker Compose** 3.8
+- **NGINX** (API Gateway)
+- **10 containers** orchestrated
+
+</td>
+</tr>
+<tr>
+<td colspan="2">
+
+### AI & External APIs
+- **VNPT eKYC** — OCR CCCD + Face Compare (real integration)
+- **VNPT SmartReader** — OCR minh chứng
+- **VNPT SmartVoice** — STT/TTS
+- **VNPT vnSocial** — Thu thập sự kiện MXH
+- **Google Gemini** — RAG Chatbot + Vision
+- **Groq** — LLM Fallback
+
+</td>
+</tr>
+</table>
 
 ---
 
-## 🏗 Kiến trúc Hệ thống (Architecture)
+## 📁 Cấu trúc dự án
 
-Hệ thống bao gồm các dịch vụ sau, giao tiếp thông qua RESTful APIs và chạy độc lập trong các Docker containers:
-
-1. **`gateway-frontend`** (Port `3000`): API Gateway (NGINX) điều hướng request, đồng thời phục vụ (serve) bộ React Frontend.
-2. **`auth-service`** (Port `3001`): Quản lý người dùng, phân quyền (RBAC), E-KYC.
-3. **`unit-service`** (Port `3002`): Quản lý cấu trúc đơn vị trực thuộc, trường học, tỉnh/thành.
-4. **`activity-service`** (Port `3003`): Quản lý các hoạt động phong trào, điểm danh.
-5. **`attendance-service`** (Port `3004`): Ghi nhận tham gia, check-in mã QR.
-6. **`proof-service`** (Port `3005`): Quản lý file lưu trữ minh chứng, băm MD5 chống gian lận.
-7. **`application-service`** (Port `3006`): Lõi nghiệp vụ nộp/duyệt hồ sơ.
-8. **`notification-service`** (Port `3007`): Gửi thông báo WebSockets / Email.
+```
+hackathon/
+├── frontend-app/               # React 19 + Vite + TailwindCSS
+│   └── src/
+│       ├── pages/              # 9 pages (Login, Register, Dashboard, ...)
+│       ├── components/         # Reusable UI components
+│       ├── contexts/           # React Context (Auth, Socket)
+│       ├── services/           # Axios API clients
+│       └── layouts/            # Page layouts
+│
+├── services/
+│   ├── shared-database/        # 📦 Prisma schema (shared across all services)
+│   │   └── prisma/
+│   │       ├── schema.prisma   # Source of truth — 7 models, 4 enums
+│   │       ├── seed.ts         # Database seed (units, criteria, admin)
+│   │       └── create-staff.ts # Create staff accounts
+│   │
+│   ├── auth-service/           # 🔐 Port 3001 — Auth, eKYC, JWT, OTP
+│   ├── unit-service/           # 🏛️ Port 3002 — Units, Rules, Criteria
+│   ├── activity-service/       # 📋 Port 3003 — Activities, Approval
+│   ├── proof-service/          # 📎 Port 3005 — Evidence, MD5 Hash
+│   ├── application-service/    # 📄 Port 3006 — Applications, Review
+│   ├── notification-service/   # 🔔 Port 3007 — WebSocket, Socket.io
+│   ├── ai-service/             # 🤖 Port 3008 — Chatbot, OCR, RAG
+│   └── api-gateway/            # (Legacy — replaced by gateway-frontend)
+│
+├── gateway-frontend/           # NGINX config + Dockerfile
+│   ├── nginx.conf              # Reverse proxy + rate limiting
+│   └── Dockerfile              # Build React → Serve via NGINX
+│
+├── docker-compose.yml          # 🐳 10 containers orchestration
+├── .env.example                # Environment variables template
+└── section*_*.md               # 📚 Technical documentation
+```
 
 ---
 
-## 🛠 Hướng dẫn Khởi chạy (Local Development)
+## 🛠 Hướng dẫn cài đặt
 
-### 📋 Yêu cầu hệ thống
-- **Docker** và **Docker Compose** đã được cài đặt (trên Windows cần mở ứng dụng Docker Desktop).
-- Node.js >= 20.x (nếu muốn test hay thao tác với các gói NPM).
+### Yêu cầu hệ thống
 
-### ⚡ Hướng dẫn Chạy dự án cho Người mới (Máy chưa có gì - Từ Zero đến Running)
+| Yêu cầu | Chi tiết |
+|---|---|
+| **Docker Desktop** | Đã cài đặt và đang chạy |
+| **RAM** | Khuyến nghị ≥ 8GB |
+| **Disk** | ≥ 5GB trống (Docker images) |
+| **Port** | `3000` chưa bị chiếm |
 
-Nếu bạn vừa clone dự án này từ Git về một máy tính mới hoàn toàn, hãy thực hiện lần lượt 4 bước đơn giản sau:
+### Khởi chạy (3 bước)
 
-**Bước 1: Mở Terminal tại thư mục gốc dự án**
+**Bước 1 — Clone & cấu hình môi trường:**
+
 ```bash
+git clone <repository-url>
 cd hackathon
+
+# Tạo file .env từ template
+# Windows:
+copy .env.example .env
+copy services\ai-service\.env.example services\ai-service\.env
+
+# Linux/macOS:
+cp .env.example .env
+cp services/ai-service/.env.example services/ai-service/.env
 ```
 
-**Bước 2: Tạo file cấu hình môi trường (`.env`) - BƯỚC BẮT BUỘC**
-Vì lý do bảo mật, file `.env` không được lưu trên Git. Bạn cần copy từ file mẫu `.env.example` có sẵn trong dự án:
-- **Trên Windows (cmd / PowerShell):**
-  ```cmd
-  copy .env.example .env
-  copy services\ai-service\.env.example services\ai-service\.env
-  ```
-- **Trên Linux / macOS / Git Bash:**
-  ```bash
-  cp .env.example .env
-  cp services/ai-service/.env.example services/ai-service/.env
-  ```
-*👉 **Mẹo:** Mở file `.env` vừa tạo và điền các API Key AI của bạn (`GEMINI_API_KEY`, `GROQ_API_KEY`, `SERPER_API_KEY`...). Nếu không điền, hệ thống Chatbot sẽ tự động chuyển sang chế độ suy luận chuyên gia nội bộ (Fallback) mà không cần gọi API ngoại.*
+> 💡 **Mẹo:** Mở file `services/ai-service/.env` và điền `GEMINI_API_KEY` hoặc `GROQ_API_KEY` để kích hoạt AI Chatbot. Nếu bỏ trống, hệ thống tự động chuyển sang chế độ Expert Fallback.
 
-**Bước 3: Khởi chạy toàn bộ hệ thống bằng 1 Lệnh duy nhất**
-Đảm bảo ứng dụng **Docker Desktop** đang chạy trên máy bạn, sau đó gõ lệnh:
+**Bước 2 — Khởi chạy toàn bộ hệ thống:**
+
 ```bash
 docker-compose up -d --build
 ```
-*(Quá trình build lần đầu tiên sẽ mất khoảng 3 - 5 phút để tải Docker Images, compile 8 Microservices + React Frontend và tự động nạp dữ liệu chuẩn vào PostgreSQL & MongoDB).*
 
-**Bước 4: Kiểm tra và Trải nghiệm**
-- Gõ lệnh `docker-compose ps` để kiểm tra. Khi toàn bộ 11 container hiển thị trạng thái **Up / Running**, hệ thống đã hoàn tất!
-- Truy cập ngay vào giao diện Web: [http://localhost:3000](http://localhost:3000)
-- Sử dụng các tài khoản kiểm thử có sẵn: `admin@sv5t.vn`, `cbtw@sv5t.vn`, `cbtinh@sv5t.vn`, `cbtruong@sv5t.vn` (Mật khẩu: `@Duclag123` / `Admin@123`).
+> ⏱️ Build lần đầu mất khoảng **3–5 phút** (compile 6 NestJS services + React Frontend + tự động nạp dữ liệu vào PostgreSQL & MongoDB).
 
----
+**Bước 3 — Truy cập & trải nghiệm:**
 
-### 🚀 Chạy toàn bộ hệ thống bằng 1 lệnh (Được khuyến nghị)
-
-Dự án đã được cấu hình chuẩn tối ưu hóa cho Docker Compose, bao gồm tự động khởi tạo cơ sở dữ liệu PostgreSQL & MongoDB, đồng bộ hóa phiên bản Prisma ORM và đóng gói 8 dịch vụ Microservices + Gateway Frontend.
-
-1. Mở terminal tại thư mục gốc dự án:
 ```bash
-cd D:\hackathon
-```
-
-2. Build và khởi chạy toàn bộ 11 containers ngầm:
-```bash
-docker-compose up -d --build
-```
-*(Hoặc dùng `docker compose up -d --build` nếu dùng Docker CLI mới)*
-*(Lưu ý: Quá trình build lần đầu tiên mất khoảng 3 - 5 phút để compile NestJS và nạp cơ sở dữ liệu)*
-
-3. Kiểm tra trạng thái hoạt động:
-```bash
+# Kiểm tra trạng thái
 docker-compose ps
+
+# Truy cập web app
+# 👉 http://localhost:3000
 ```
-Khi toàn bộ 11 container đều hiển thị trạng thái **Up / Running**, hệ thống đã sẵn sàng!
 
-4. Truy cập và trải nghiệm Hệ thống:
-- 👉 **Web App & Gateway:** [http://localhost:3000](http://localhost:3000)
+### Dừng hệ thống
 
-### 💡 Lưu ý quan trọng & Tài khoản kiểm thử (Hackathon Tip)
-- **Tài khoản mặc định trong DB:** Bạn có thể dùng các email như `admin@sv5t.vn`, `cbtw@sv5t.vn`, `cbtinh@sv5t.vn`, `cbtruong@sv5t.vn` (Mật khẩu: `@Duclag123` / `Admin@123` hoặc dùng tính năng Quên mật khẩu để đặt lại).
-- **Tính năng Quên mật khẩu:** Để thuận tiện cho hội đồng kiểm thử Hackathon mà không cần cấu hình Mail Server thực tế (SMTP), mã xác thực OTP (6 số) sẽ được hệ thống tự động sinh và **hiển thị trực tiếp trên thông báo màn hình web** khi bạn nhập email hợp lệ.
-- **Làm mới kết nối Gateway:** Nếu bạn vừa khởi động lại một dịch vụ riêng lẻ trong Docker, hãy chạy lệnh `docker-compose restart gateway-frontend` để NGINX cập nhật lại bảng định danh IP nội bộ mới nhất.
-
-### 🛑 Dừng hệ thống
 ```bash
+# Dừng containers (giữ dữ liệu)
 docker-compose down
+
+# Dừng + xóa sạch dữ liệu (reset hoàn toàn)
+docker-compose down -v
 ```
-*(Thêm cờ `-v` nếu bạn muốn xóa sạch toàn bộ dữ liệu Database để khởi tạo lại từ đầu: `docker-compose down -v`)*
----
-
-## ☁️ Hướng dẫn Triển khai (Production Deployment)
-
-Vì dự án mang quy mô Microservices, không nên sử dụng các nền tảng miễn phí có cấu hình thấp (như Vercel/Render). Bạn nên triển khai hệ thống lên một **VPS** (Khuyên dùng [Oracle Cloud Always Free](https://www.oracle.com/cloud/free/) với cấu hình 4 ARM Cores, 24GB RAM).
-
-### Các bước cơ bản:
-1. SSH vào VPS của bạn.
-2. Cài đặt Docker: `sudo apt install docker.io docker-compose -y` && `sudo usermod -aG docker $USER`.
-3. Clone mã nguồn về VPS.
-4. Chạy `docker-compose up -d --build`.
-5. Đảm bảo Firewall của VPS (và Cloud Console) đã cho phép truy cập Ingress vào Port `3000`.
-6. Trỏ Domain của bạn về IP của VPS và tận hưởng!
 
 ---
 
-## 📝 Giấy phép (License)
+## 👤 Tài khoản kiểm thử
+
+Hệ thống tự động tạo sẵn các tài khoản khi khởi động:
+
+| Email | Vai trò | Mật khẩu |
+|---|---|---|
+| `admin@sv5t.vn` | Quản trị viên (ADMIN) | `Admin@123` |
+| `cbtw@sv5t.vn` | Cán bộ Trung ương (CB_TW) | `Admin@123` |
+| `cbtinh@sv5t.vn` | Cán bộ Tỉnh/TP (CB_TINH) | `Admin@123` |
+| `cbtruong@sv5t.vn` | Cán bộ Trường (CB_TRUONG) | `Admin@123` |
+
+> 💡 **Tính năng Quên mật khẩu:** Khi chưa cấu hình SMTP, mã OTP 6 số sẽ được hiển thị trực tiếp trên thông báo màn hình web.
+
+> 🔄 **Restart Gateway:** Nếu vừa khởi động lại một service riêng lẻ, chạy `docker-compose restart gateway-frontend` để NGINX cập nhật IP nội bộ.
+
+---
+
+## ☁️ Triển khai Production
+
+Vì dự án mang quy mô Microservices (10 containers), khuyến nghị triển khai trên **VPS** có cấu hình đủ mạnh:
+
+```bash
+# 1. SSH vào VPS
+ssh user@your-server
+
+# 2. Cài đặt Docker
+sudo apt update && sudo apt install docker.io docker-compose -y
+sudo usermod -aG docker $USER
+
+# 3. Clone & chạy
+git clone <repository-url> && cd hackathon
+cp .env.example .env
+cp services/ai-service/.env.example services/ai-service/.env
+docker-compose up -d --build
+
+# 4. Mở firewall port 3000
+# 5. Trỏ domain về IP VPS
+```
+
+> 💡 Khuyến nghị: [Oracle Cloud Always Free](https://www.oracle.com/cloud/free/) — 4 ARM Cores, 24GB RAM.
+
+
+---
+
+## 📝 Giấy phép
+
 Dự án được xây dựng phục vụ cuộc thi Hackathon.
+
 © 2026 Bản quyền thuộc về đội ngũ phát triển dự án.
